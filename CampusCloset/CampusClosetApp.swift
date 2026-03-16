@@ -9,6 +9,9 @@ import SwiftUI
 
 @main
 struct CampusClosetApp: App {
+    
+    @StateObject var listingsVM = ListingsViewModel()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
