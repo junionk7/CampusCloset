@@ -58,7 +58,7 @@ struct ListingDetailView: View {
                     description: "Used for one year",
                     imageUrl: nil,
                     createdAt: Date(),
-                    userId: nil
+                    userId: UUID() //new random UUID
             )
     )
 }

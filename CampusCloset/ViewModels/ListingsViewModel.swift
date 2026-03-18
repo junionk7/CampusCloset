@@ -29,8 +29,8 @@ class ListingsViewModel: ObservableObject {
     }
 
     // Post to Supabase
-    func addListing(title: String, price: String, description: String) async {
-        let newListing = Listing(title: title, price: price, description: description)
+    func addListing(title: String, price: String, description: String, userId:UUID) async {
+        let newListing = Listing(title: title, price: price, description: description, userId: userId)
         
         do {
             try await supabase
@@ -38,10 +38,11 @@ class ListingsViewModel: ObservableObject {
                 .insert(newListing)
                 .execute()
             
+            print("✅ Successfully posted to Supabase!")
             // Refresh the list so the new item shows up immediately
             await fetchListings()
         } catch {
-            print("Error posting: \(error)")
+            print("❌ Supabase Error: \(error.localizedDescription)")
         }
     }
 }

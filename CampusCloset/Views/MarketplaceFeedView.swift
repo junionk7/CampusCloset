@@ -40,4 +40,6 @@ struct MarketplaceFeedView: View {
 #Preview {
     MarketplaceFeedView()
         .environmentObject(ListingsViewModel())
+        .environmentObject(AuthViewModel())
+
 }

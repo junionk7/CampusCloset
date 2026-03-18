@@ -6,17 +6,14 @@
 //
 import Foundation
 
-//data structure of a listing
-import Foundation
-
 struct Listing: Identifiable, Codable {
-    var id: UUID? = UUID() // Matches 'id'
+    var id: UUID? // Matches 'id'
     let title: String
     let price: String
     let description: String
     var imageUrl: String? = nil // Matches 'image_url'
-    var createdAt: Date? = Date() // Matches 'created_at'
-    var userId: UUID? = nil // Matches 'user_id'
+    var createdAt: Date?
+    var userId: UUID
 
     enum CodingKeys: String, CodingKey {
         case id, title, price, description
