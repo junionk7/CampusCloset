@@ -37,8 +37,6 @@ struct ContentView: View {
                 }
 
             
-            
-            //testing
         }
     }
 }

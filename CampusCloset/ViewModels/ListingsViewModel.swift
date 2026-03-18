@@ -7,17 +7,41 @@
 
 import Foundation
 import SwiftUI
+import Supabase
 import Combine
 
+@MainActor
 class ListingsViewModel: ObservableObject {
+    @Published var listings: [Listing] = []
 
-    @Published var listings: [Listing] = [
-        Listing(title: "Mini Fridge", price: "$40", description: "Used for one year."),
-        Listing(title: "Desk Lamp", price: "$5", description: "Works perfectly."),
-        Listing(title: "Fan", price: "Free", description: "Leaving campus soon.")
-    ]
+    // Fetch from Supabase
+    func fetchListings() async {
+        do {
+            let fetchedListings: [Listing] = try await supabase
+                .from("listings") // Matches your table name
+                .select()
+                .execute()
+                .value
+            self.listings = fetchedListings
+        } catch {
+            print("Error fetching: \(error)")
+        }
+    }
 
-    func addListing(_ listing: Listing) {
-        listings.append(listing)
+    // Post to Supabase
+    func addListing(title: String, price: String, description: String) async {
+        let newListing = Listing(title: title, price: price, description: description)
+        
+        do {
+            try await supabase
+                .from("listings") // Matches your table name
+                .insert(newListing)
+                .execute()
+            
+            // Refresh the list so the new item shows up immediately
+            await fetchListings()
+        } catch {
+            print("Error posting: \(error)")
+        }
     }
 }

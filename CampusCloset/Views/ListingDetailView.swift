@@ -52,9 +52,13 @@ struct ListingDetailView: View {
 #Preview {
     ListingDetailView(
         listing: Listing(
-            title: "Mini Fridge",
-            price: "$40",
-            description: "Used for one year"
-        )
+                    id: UUID(),
+                    title: "Mini Fridge",
+                    price: "$40",
+                    description: "Used for one year",
+                    imageUrl: nil,
+                    createdAt: Date(),
+                    userId: nil
+            )
     )
 }

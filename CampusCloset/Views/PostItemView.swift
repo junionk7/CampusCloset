@@ -37,21 +37,18 @@ struct PostItemView: View {
                 Section {
 
                     Button("Post Listing") {
+                        Task {
+                            await listingsVM.addListing(
+                                title: title,
+                                price: price,
+                                description: description
+                            )
 
-                        // Create a listing from the form values
-                        let newListing = Listing(
-                            title: title,
-                            price: price,
-                            description: description
-                        )
-
-                        // Add the listing to the shared list
-                        listingsVM.addListing(newListing)
-
-                        // Clear the form after posting
-                        title = ""
-                        price = ""
-                        description = ""
+                            // Clear the form
+                            title = ""
+                            price = ""
+                            description = ""
+                        }
                     }
 
                 }
