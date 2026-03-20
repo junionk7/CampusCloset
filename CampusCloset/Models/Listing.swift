@@ -11,7 +11,7 @@ struct Listing: Identifiable, Codable {
     let title: String
     let price: String
     let description: String
-    var imageUrl: String? = nil // Matches 'image_url'
+    var imageUrl: String? // Matches 'image_url'
     var createdAt: Date?
     var userId: UUID
 
