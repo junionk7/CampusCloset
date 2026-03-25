@@ -49,7 +49,7 @@ struct ListingDetailView: View {
                         .frame(height: 300)
                         .cornerRadius(12)
                         .overlay(Text("No Image Available").foregroundColor(.gray))
-                }
+                } 
                 
                 Text(listing.title)
                     .font(.title)
