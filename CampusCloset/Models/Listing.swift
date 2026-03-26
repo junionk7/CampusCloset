@@ -7,12 +7,12 @@
 import Foundation
 
 struct Listing: Identifiable, Codable {
-    var id: UUID? // Matches 'id'
+    var id: UUID? = nil //default value
     let title: String
     let price: String
     let description: String
     var imageUrl: String? // Matches 'image_url'
-    var createdAt: Date?
+    var createdAt: Date? = nil //default value
     var userId: UUID
 
     enum CodingKeys: String, CodingKey {
@@ -21,4 +21,5 @@ struct Listing: Identifiable, Codable {
         case createdAt = "created_at"
         case userId = "user_id"
     }
+    
 }
