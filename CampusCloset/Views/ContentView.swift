@@ -26,11 +26,6 @@ struct ContentView: View {
                     Label("Post", systemImage: "plus.circle")
                 }
 
-            MessagesView()
-                .tabItem {
-                    Label("Messages", systemImage: "message")
-                }
-
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person")
