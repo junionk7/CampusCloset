@@ -74,7 +74,28 @@ struct ListingDetailView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
-                //Only show if it's the users post
+                
+                // Only show this button if the current user owns the listing
+                if listing.userId == authVM.currentUser?.id {
+                    Button(role: .destructive) {
+                        Task {
+                            await listingsVM.deleteListing(listing: listing)
+                            dismiss() // Goes back to the feed after deleting
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Delete Listing")
+                        }
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .foregroundColor(.red)
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 10)
+                }
             }
             
             

@@ -23,6 +23,7 @@ struct Listing: Identifiable, Codable {
         case imageUrl = "image_url"
         case createdAt = "created_at"
         case userId = "user_id"
+        case status
         case removalReason = "removal_reason"
     }
     

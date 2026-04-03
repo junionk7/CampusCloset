@@ -71,6 +71,11 @@ struct MarketplaceFeedView: View {
             .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
+        
+    //Adding the delete feature ...why do this...
+        .task {
+                    await listingsVM.fetchListings()
+                }
     }
 }
 

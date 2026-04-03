@@ -20,16 +20,40 @@ class ListingsViewModel: ObservableObject {
     
     
     // Fetch from Supabase
+    // 1. Update fetchListings to only show available items
     func fetchListings() async {
         do {
             let fetchedListings: [Listing] = try await supabase
-                .from("listings") // Matches your table name
+                .from("listings")
                 .select()
+                .eq("status", value: "available") // Added this filter
                 .execute()
                 .value
+            
             self.listings = fetchedListings
         } catch {
             print("Error fetching: \(error)")
+        }
+    }
+
+    // 2. Add this new function for Soft Deleting
+    func deleteListing(listing: Listing) async {
+        guard let id = listing.id else { return }
+        
+        do {
+            // We perform an UPDATE, not a DELETE, to keep data for stats
+            try await supabase
+                .from("listings")
+                .update(["status": "deleted"])
+                .eq("id", value: id)
+                .execute()
+            
+            print("✅ Listing marked as deleted in Supabase")
+            
+            // Refresh the feed immediately
+            await fetchListings()
+        } catch {
+            print("❌ Error soft-deleting listing: \(error)")
         }
     }
     
