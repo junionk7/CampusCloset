@@ -118,4 +118,5 @@ class ListingsViewModel: ObservableObject {
                 return false
             }
     }
+    
 }

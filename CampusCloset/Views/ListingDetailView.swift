@@ -15,6 +15,8 @@ struct ListingDetailView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var listingsVM: ListingsViewModel
     
+    @Environment(\.dismiss) var dismiss
+    
     // State variables for the message sheet
     @State private var showingMessageSheet = false
     @State private var messageText = ""
@@ -72,7 +74,10 @@ struct ListingDetailView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
+                //Only show if it's the users post
             }
+            
+            
             .padding()
             .navigationTitle("Listing")
             .navigationBarTitleDisplayMode(.inline)
