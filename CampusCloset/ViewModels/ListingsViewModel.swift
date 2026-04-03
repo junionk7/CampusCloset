@@ -17,6 +17,8 @@ import Combine
 class ListingsViewModel: ObservableObject {
     @Published var listings: [Listing] = []
 
+    
+    
     // Fetch from Supabase
     func fetchListings() async {
         do {

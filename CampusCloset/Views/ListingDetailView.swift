@@ -50,6 +50,14 @@ struct ListingDetailView: View {
                 Text(listing.price).font(.title2).foregroundColor(.green)
                 Text(listing.description).font(.body)
                 
+                //To add the date
+                HStack {
+                    Image(systemName: "calendar")
+                    Text("Posted on \(listing.formattedDate)")
+                }
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                
                 Spacer()
                 
                 // Trigger the message sheet
