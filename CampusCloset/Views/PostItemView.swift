@@ -84,13 +84,15 @@ struct PostItemView: View {
 
     // Logic moved to a function to keep 'body' clean
     private func postListing() {
-        guard let userId = authViewModel.currentUser?.id, let image = selectedImage else { return }
+        guard let userId = authViewModel.currentUser?.id else { return }
         
         isPosting = true
         
         Task {
-            let link = await listingsVM.uploadImage(image)
-            
+            var link: String? = nil
+                        if let image = selectedImage {
+                            link = await listingsVM.uploadImage(image)
+                        }
             
             await listingsVM.addListing(
                 title: title,
