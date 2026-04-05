@@ -26,7 +26,7 @@ class ListingsViewModel: ObservableObject {
             let fetchedListings: [Listing] = try await supabase
                 .from("listings")
                 .select()
-                .eq("status", value: "available") // Added this filter
+                .neq("status", value: "deleted") // Added this filter
                 .execute()
                 .value
             
@@ -57,6 +57,28 @@ class ListingsViewModel: ObservableObject {
         }
     }
     
+    //Update status
+    func updateListingStatus(listing: Listing, newStatus: Listing.ListingStatus) async {
+            guard let id = listing.id else { return }
+            
+            do {
+                // Updating the EXISTING 'status' column
+                try await supabase
+                    .from("listings")
+                    .update(["status": newStatus.rawValue])
+                    .eq("id", value: id)
+                    .execute()
+                
+                await fetchListings()
+            } catch {
+                print("❌ Error updating status: \(error)")
+            }
+        }
+    
+    
+    
+    
+    
     // 1. New Function: Upload the photo to Supabase Storage
         func uploadImage(_ image: UIImage) async -> String? {
             // Convert the image to data (compress it so it's not too huge)
@@ -85,7 +107,7 @@ class ListingsViewModel: ObservableObject {
 
     // Post to Supabase
     func addListing(title: String, price: String, description: String, userId:UUID, imageUrl: String?) async {
-        let newListing = Listing(title: title, price: price, description: description, imageUrl: imageUrl, userId: userId)
+        let newListing = Listing(title: title, price: price, description: description, imageUrl: imageUrl, userId: userId, status: .available, removalReason: nil)
         
         do {
             try await supabase

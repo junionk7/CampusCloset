@@ -11,6 +11,7 @@ struct MarketplaceFeedView: View {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     
+                    ZStack(alignment: .topTrailing){
                     
                     // Image selection
                     
@@ -48,6 +49,18 @@ struct MarketplaceFeedView: View {
                             .cornerRadius(8)
                             .overlay(Text("No Image").foregroundColor(.gray))
                     }
+                        
+                        // NEW LOGIC: Shows a badge for every status
+                        Text(listing.status.displayName)
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(statusColor(listing.status)) // Use a helper for colors
+                            .cornerRadius(4)
+                            .padding(8)
+                        }
                     
                     
                     
@@ -76,6 +89,17 @@ struct MarketplaceFeedView: View {
         .task {
                     await listingsVM.fetchListings()
                 }
+    }
+    
+    private func statusColor(_ status: Listing.ListingStatus) -> Color {
+        switch status {
+        case .available:
+            return .green
+        case .sold:
+            return .orange
+        case .unavailable:
+            return .gray
+        }
     }
 }
 

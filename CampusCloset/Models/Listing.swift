@@ -15,9 +15,21 @@ struct Listing: Identifiable, Codable {
     var createdAt: Date? = nil //default value
     var userId: UUID
     
-    var status: String? = "available"
+    var status: ListingStatus  = .available
+    //need to implement the following still
     var removalReason: String? = nil
 
+    //adding more possibiliites
+    enum ListingStatus: String, Codable, CaseIterable {
+        case available = "available"
+        case sold = "sold"
+        case unavailable = "unavailable"
+            
+        var displayName: String {
+            self.rawValue.capitalized
+        }
+    }
+    
     enum CodingKeys: String, CodingKey {
         case id, title, price, description
         case imageUrl = "image_url"

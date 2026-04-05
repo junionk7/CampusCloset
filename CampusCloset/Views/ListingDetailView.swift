@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Auth
+import Supabase
 
 struct ListingDetailView: View {
     let listing: Listing
@@ -51,6 +52,39 @@ struct ListingDetailView: View {
                 Text(listing.title).font(.title).fontWeight(.bold)
                 Text(listing.price).font(.title2).foregroundColor(.green)
                 Text(listing.description).font(.body)
+                
+                //Only can edit if owner
+                HStack {
+                    // Visible to everyone: Shows "Available", "Sold", etc.
+                    Text(listing.status.displayName)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(listing.status == .available ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+                        .foregroundColor(listing.status == .available ? .green : .orange)
+                        .cornerRadius(8)
+                    
+                    Spacer()
+                    
+                    // Visible only to the person who posted it
+                    if listing.userId == authVM.currentUser?.id {
+                        Menu {
+                            ForEach(Listing.ListingStatus.allCases, id: \.self) { status in
+                                Button(status.displayName) {
+                                    Task {
+                                        await listingsVM.updateListingStatus(listing: listing, newStatus: status)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Update Status", systemImage: "pencil.circle")
+                                .font(.subheadline)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                .padding(.vertical, 5)
                 
                 //To add the date
                 HStack {
