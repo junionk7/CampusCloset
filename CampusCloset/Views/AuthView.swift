@@ -12,6 +12,8 @@ struct AuthView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var firstName = ""
+    @State private var lastName = ""
     @State private var isSignUp = false
     
     var body: some View {
@@ -25,11 +27,9 @@ struct AuthView: View {
                     .padding(.bottom, 10)
                 
                 if authViewModel.showConfirmationMessage {
-                    // Show the "Check your Email" UI
                     confirmationUI
                         .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
                 } else {
-                    // Show the standard Login/Signup UI
                     authFieldsUI
                         .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing)))
                 }
@@ -39,7 +39,6 @@ struct AuthView: View {
         }
     }
     
-    // MARK: - Auth Fields View
     var authFieldsUI: some View {
         VStack(spacing: 15) {
             Text(isSignUp ? "Create Account" : "Welcome Back")
@@ -47,6 +46,16 @@ struct AuthView: View {
                 .fontWeight(.bold)
             
             VStack(spacing: 15) {
+                if isSignUp {
+                    HStack {
+                        TextField("First Name", text: $firstName)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        TextField("Last Name", text: $lastName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                }
+                
                 TextField("Email", text: $email)
                     .textFieldStyle(.roundedBorder)
                     .autocapitalization(.none)
@@ -72,18 +81,22 @@ struct AuthView: View {
             Button {
                 Task {
                     if isSignUp {
-                        await authViewModel.signUp(email: email, password: password, confirmPassword: confirmPassword)
+                        await authViewModel.signUp(
+                            email: email,
+                            password: password,
+                            confirmPassword: confirmPassword,
+                            firstName: firstName,
+                            lastName: lastName
+                        )
                     } else {
                         await authViewModel.signIn(email: email, password: password)
                     }
                 }
             } label: {
                 if authViewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Text(isSignUp ? "Sign Up" : "Log In")
-                        .fontWeight(.bold)
+                    Text(isSignUp ? "Sign Up" : "Log In").fontWeight(.bold)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -94,9 +107,7 @@ struct AuthView: View {
             .padding(.horizontal)
             
             Button {
-                withAnimation {
-                    isSignUp.toggle()
-                }
+                withAnimation { isSignUp.toggle() }
             } label: {
                 Text(isSignUp ? "Already have an account? Log In" : "Don't have an account? Sign Up")
                     .font(.footnote)
@@ -104,7 +115,6 @@ struct AuthView: View {
         }
     }
     
-    // MARK: - Confirmation Message View
     var confirmationUI: some View {
         VStack(spacing: 25) {
             Image(systemName: "envelope.circle.fill")
@@ -112,9 +122,7 @@ struct AuthView: View {
                 .foregroundColor(.blue)
             
             VStack(spacing: 10) {
-                Text("Verify your email")
-                    .font(.title2).bold()
-                
+                Text("Verify your email").font(.title2).bold()
                 Text("We sent a link to **\(email)**.\nPlease click it to activate your account.")
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
@@ -125,9 +133,7 @@ struct AuthView: View {
                     Task { await authViewModel.resendConfirmationEmail(email: email) }
                 } label: {
                     HStack {
-                        if !authViewModel.canResendEmail {
-                            ProgressView().padding(.trailing, 5)
-                        }
+                        if !authViewModel.canResendEmail { ProgressView().padding(.trailing, 5) }
                         Text(authViewModel.canResendEmail ? "Resend Email" : "Resend in \(authViewModel.resendCountdown)s")
                     }
                     .fontWeight(.semibold)
@@ -146,8 +152,4 @@ struct AuthView: View {
         .background(Color(.systemGray6))
         .cornerRadius(20)
     }
-}
-
-#Preview {
-    AuthView().environmentObject(AuthViewModel())
 }
