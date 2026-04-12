@@ -150,12 +150,18 @@ class ListingsViewModel: ObservableObject {
             message: message
         )
         
+        let session = try? await supabase.auth.session
+        _ = session?.accessToken ?? ""
+        
 
         do {
                 // use '_ =' to say we don't need to save the result of this call
                 _ = try await supabase.functions.invoke(
                     "send-message",
-                    options: .init(body: payload)
+                    options: .init(
+                        headers: ["Content-Type": "application/json"],
+                        body: payload
+                    )
                 )
                 return true
             } catch {

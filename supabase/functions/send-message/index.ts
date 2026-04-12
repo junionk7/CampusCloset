@@ -29,7 +29,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`
       },
       body: JSON.stringify({
-        from: 'CampusCloset <onboarding@resend.dev>',
+        from: 'CampusCloset <notifications@contact.usecampuscloset.org>',
         to: [sellerEmail], 
         reply_to: buyerEmail,
         subject: `New interest in your item: ${itemTitle}`,
