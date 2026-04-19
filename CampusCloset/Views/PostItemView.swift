@@ -5,7 +5,6 @@
 //  Created by Jun Kuang on 3/14/26.
 //
 
-
 import SwiftUI
 import Auth
 import PhotosUI
@@ -17,60 +16,55 @@ struct PostItemView: View {
     @State private var title = ""
     @State private var price = ""
     @State private var description = ""
-    @State private var selectedCategory: Listing.ListingCategory = .other // Default category
+    @State private var selectedCategory: Listing.ListingCategory = .other
     
-    @State private var selectedItem: PhotosPickerItem? = nil
-    @State private var selectedImage: UIImage? = nil
+    // NEW: Array states for multiple selection
+    @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var selectedImages: [UIImage] = []
     @State private var isPosting = false
 
     var body: some View {
         NavigationStack {
             Form {
-                // Info Section
                 Section(header: Text("Item Information")) {
                     TextField("Item Title", text: $title)
-                    TextField("Price (e.g. $15 or Free)", text: $price)
-                        .keyboardType(.default) // Changed from decimalPad so users can type "Free"
-                    
-                    // NEW: Category Picker
+                    TextField("Price (e.g. $15 or Free)", text: $price).keyboardType(.default)
                     Picker("Category", selection: $selectedCategory) {
-                        ForEach(Listing.ListingCategory.allCases, id: \.self) { cat in
-                            Text(cat.displayName).tag(cat)
-                        }
+                        ForEach(Listing.ListingCategory.allCases, id: \.self) { cat in Text(cat.displayName).tag(cat) }
+                    }
+                    TextField("Description", text: $description, axis: .vertical).lineLimit(3...5)
+                }
+                
+                Section(header: Text("Photos (Up to 6)")) {
+                    // NEW: Allow up to 6 images
+                    PhotosPicker(selection: $selectedItems, maxSelectionCount: 6, matching: .images) {
+                        Label(selectedImages.isEmpty ? "Select Photos" : "Add/Edit Photos", systemImage: "photo.on.rectangle")
                     }
                     
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...5)
-                }
-                
-                // Photos Section
-                Section(header: Text("Photo")) {
-                    PhotosPicker(selection: $selectedItem, matching: .images) {
-                        if let selectedImage {
-                            Image(uiImage: selectedImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 200)
-                                .clipped()
-                                .cornerRadius(10)
-                        } else {
-                            Label("Select a Photo", systemImage: "photo.on.rectangle")
-                                .frame(maxWidth: .infinity, minHeight: 150)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(10)
+                    // NEW: Horizontal gallery preview
+                    if !selectedImages.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(0..<selectedImages.count, id: \.self) { index in
+                                    Image(uiImage: selectedImages[index])
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipped()
+                                        .cornerRadius(8)
+                                }
+                            }
+                            .padding(.vertical, 5)
                         }
                     }
                 }
                 
-                // Button
                 Section {
                     Button(action: postListing) {
                         if isPosting {
                             ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Text("Post Listing")
-                                .fontWeight(.bold)
-                                .frame(maxWidth: .infinity)
+                            Text("Post Listing").fontWeight(.bold).frame(maxWidth: .infinity)
                         }
                     }
                     .foregroundColor(.white)
@@ -79,11 +73,15 @@ struct PostItemView: View {
                 }
             }
             .navigationTitle("Post Item")
-            .onChange(of: selectedItem) { oldValue, newValue in
+            // NEW: Load all selected images into the array
+            .onChange(of: selectedItems) { oldValue, newValue in
                 Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        selectedImage = image
+                    selectedImages.removeAll()
+                    for item in newValue {
+                        if let data = try? await item.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            selectedImages.append(image)
+                        }
                     }
                 }
             }
@@ -95,27 +93,24 @@ struct PostItemView: View {
         isPosting = true
         
         Task {
-            var link: String? = nil
-            if let image = selectedImage {
-                link = await listingsVM.uploadImage(image)
-            }
+            // Upload all images and get the array of links back
+            let links = await listingsVM.uploadImages(images: selectedImages)
             
             await listingsVM.addListing(
                 title: title,
                 price: price,
                 description: description,
                 userId: userId,
-                imageUrl: link,
-                category: selectedCategory // Now passes the selected category to the view model
+                imageUrls: links, // Pass array
+                category: selectedCategory
             )
             
-            // Clear fields after successful post
             title = ""
             price = ""
             description = ""
             selectedCategory = .other
-            selectedImage = nil
-            selectedItem = nil
+            selectedImages.removeAll()
+            selectedItems.removeAll()
             isPosting = false
         }
     }

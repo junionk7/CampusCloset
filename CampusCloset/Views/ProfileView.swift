@@ -101,21 +101,44 @@ struct ProfileView: View {
                             LazyVGrid(columns: columns, spacing: 15) {
                                 ForEach(userListings) { listing in
                                     NavigationLink(destination: ListingDetailView(listing: listing)) {
-                                        ZStack {
-                                            if let urlString = listing.imageUrl, let url = URL(string: urlString) {
-                                                AsyncImage(url: url) { image in
-                                                    image.resizable().aspectRatio(1, contentMode: .fill)
-                                                } placeholder: {
-                                                    Color.gray.opacity(0.3).overlay(ProgressView())
+                                        VStack(alignment: .leading) {
+                                            // UPDATED: Use displayImageUrl helper instead of imageUrl
+                                            if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
+                                                AsyncImage(url: url) { phase in
+                                                    switch phase {
+                                                    case .success(let image):
+                                                        image
+                                                            .resizable()
+                                                            .scaledToFill()
+                                                            .frame(height: 120)
+                                                            .clipped()
+                                                            .cornerRadius(10)
+                                                    case .failure, .empty:
+                                                        RoundedRectangle(cornerRadius: 10)
+                                                            .fill(Color.gray.opacity(0.2))
+                                                            .frame(height: 120)
+                                                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
+                                                    @unknown default:
+                                                        EmptyView()
+                                                    }
                                                 }
                                             } else {
-                                                Color.gray.opacity(0.2)
-                                                    .overlay(Image(systemName: "bag").foregroundColor(.gray))
+                                                // Fallback for listings with no images
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .fill(Color.gray.opacity(0.2))
+                                                    .frame(height: 120)
+                                                    .overlay(Image(systemName: "photo").foregroundColor(.gray))
                                             }
+                                            
+                                            Text(listing.title)
+                                                .font(.caption)
+                                                .fontWeight(.bold)
+                                                .lineLimit(1)
+                                            
+                                            Text(listing.price)
+                                                .font(.caption2)
+                                                .foregroundColor(.green)
                                         }
-                                        .frame(height: 160)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .shadow(color: .black.opacity(0.1), radius: 3, y: 2)
                                     }
                                 }
                             }

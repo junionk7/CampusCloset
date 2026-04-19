@@ -60,7 +60,7 @@ struct MarketplaceFeedView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ZStack(alignment: .topTrailing) {
                             // Image selection
-                            if let urlString = listing.imageUrl, let url = URL(string: urlString) {
+                            if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
                                 AsyncImage(url: url) { phase in
                                     switch phase {
                                     case .success(let image):
