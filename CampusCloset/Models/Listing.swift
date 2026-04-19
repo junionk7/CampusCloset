@@ -18,7 +18,9 @@ struct Listing: Identifiable, Codable {
     var status: ListingStatus  = .available
     //need to implement the following still
     var removalReason: String? = nil
-
+    var category: ListingCategory
+    
+    
     //adding more possibiliites
     enum ListingStatus: String, Codable, CaseIterable {
         case available = "available"
@@ -30,6 +32,15 @@ struct Listing: Identifiable, Codable {
         }
     }
     
+    enum ListingCategory: String, Codable, CaseIterable {
+            case clothing = "Clothing"
+            case school = "School"
+            case appliances = "Appliances"
+            case other = "Other"
+            
+            var displayName: String { self.rawValue }
+        }
+    
     enum CodingKeys: String, CodingKey {
         case id, title, price, description
         case imageUrl = "image_url"
@@ -37,6 +48,7 @@ struct Listing: Identifiable, Codable {
         case userId = "user_id"
         case status
         case removalReason = "removal_reason"
+        case category
     }
     
     
@@ -48,4 +60,14 @@ struct Listing: Identifiable, Codable {
             formatter.timeStyle = .none
             return formatter.string(from: createdAt)
         }
+    
+    
+    // NEW HELPER: Converts string prices ("$15") to numbers (15.0) for sorting
+        var priceAsDouble: Double {
+            let cleanPrice = price.replacingOccurrences(of: "$", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if cleanPrice.lowercased() == "free" { return 0.0 }
+            return Double(cleanPrice) ?? 0.0
+        }
 }
+    
+

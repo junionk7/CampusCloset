@@ -17,6 +17,7 @@ struct PostItemView: View {
     @State private var title = ""
     @State private var price = ""
     @State private var description = ""
+    @State private var selectedCategory: Listing.ListingCategory = .other // Default category
     
     @State private var selectedItem: PhotosPickerItem? = nil
     @State private var selectedImage: UIImage? = nil
@@ -25,87 +26,94 @@ struct PostItemView: View {
     var body: some View {
         NavigationStack {
             Form {
-                //menus
+                // Info Section
                 Section(header: Text("Item Information")) {
                     TextField("Item Title", text: $title)
-                    TextField("Price", text: $price)
-                        .keyboardType(.decimalPad)
+                    TextField("Price (e.g. $15 or Free)", text: $price)
+                        .keyboardType(.default) // Changed from decimalPad so users can type "Free"
+                    
+                    // NEW: Category Picker
+                    Picker("Category", selection: $selectedCategory) {
+                        ForEach(Listing.ListingCategory.allCases, id: \.self) { cat in
+                            Text(cat.displayName).tag(cat)
+                        }
+                    }
+                    
                     TextField("Description", text: $description, axis: .vertical)
                         .lineLimit(3...5)
                 }
-                //Photos Section
+                
+                // Photos Section
                 Section(header: Text("Photo")) {
-                                PhotosPicker(selection: $selectedItem, matching: .images) {
-                                    if let selectedImage {
-                                        Image(uiImage: selectedImage)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(height: 200)
-                                            .clipped()
-                                            .cornerRadius(10)
-                                    } else {
-                                        Label("Select a Photo", systemImage: "photo.on.rectangle")
-                                            .frame(maxWidth: .infinity, minHeight: 150)
-                                            .background(Color(.systemGray6))
-                                            .cornerRadius(10)
-                                    }
-                                }
-                            }
-                //BUtton
+                    PhotosPicker(selection: $selectedItem, matching: .images) {
+                        if let selectedImage {
+                            Image(uiImage: selectedImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 200)
+                                .clipped()
+                                .cornerRadius(10)
+                        } else {
+                            Label("Select a Photo", systemImage: "photo.on.rectangle")
+                                .frame(maxWidth: .infinity, minHeight: 150)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                        }
+                    }
+                }
+                
+                // Button
                 Section {
                     Button(action: postListing) {
-                        Text("Post Listing")
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
+                        if isPosting {
+                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Post Listing")
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .foregroundColor(.white)
-                    // Disable button if title is empty, no image is picked, or currently posting
-                    .listRowBackground(title.isEmpty ? Color.gray : Color.blue)
-                    .disabled(title.isEmpty || authViewModel.currentUser == nil)
-                    
+                    .listRowBackground(title.isEmpty || isPosting ? Color.gray : Color.blue)
+                    .disabled(title.isEmpty || authViewModel.currentUser == nil || isPosting)
                 }
             }
-            
-            
             .navigationTitle("Post Item")
-            
             .onChange(of: selectedItem) { oldValue, newValue in
                 Task {
-                    // We use newValue here because that is the item the user just picked
                     if let data = try? await newValue?.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
                         selectedImage = image
                     }
                 }
             }
-            
         }
     }
 
-    // Logic moved to a function to keep 'body' clean
     private func postListing() {
         guard let userId = authViewModel.currentUser?.id else { return }
-        
         isPosting = true
         
         Task {
             var link: String? = nil
-                        if let image = selectedImage {
-                            link = await listingsVM.uploadImage(image)
-                        }
+            if let image = selectedImage {
+                link = await listingsVM.uploadImage(image)
+            }
             
             await listingsVM.addListing(
                 title: title,
                 price: price,
                 description: description,
                 userId: userId,
-                imageUrl: link
+                imageUrl: link,
+                category: selectedCategory // Now passes the selected category to the view model
             )
             
             // Clear fields after successful post
             title = ""
             price = ""
             description = ""
+            selectedCategory = .other
             selectedImage = nil
             selectedItem = nil
             isPosting = false
