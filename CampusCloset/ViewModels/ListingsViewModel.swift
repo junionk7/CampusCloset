@@ -43,16 +43,26 @@ class ListingsViewModel: ObservableObject {
     }
 
     func fetchListings() async {
-        do {
-            let fetchedListings: [Listing] = try await supabase
-                .from("listings")
-                .select()
-                .neq("status", value: "deleted")
-                .execute()
-                .value
-            self.listings = fetchedListings
-        } catch { print("Error fetching: \(error)") }
-    }
+            do {
+                // Note the syntax: we are explicitly grabbing everything from listings
+                // and the full_name from the profiles table linked via user_id
+                let fetchedListings: [Listing] = try await supabase
+                    .from("listings")
+                    .select("""
+                        *,
+                        profiles:user_id (
+                            full_name
+                        )
+                    """)
+                    .neq("status", value: "deleted")
+                    .execute()
+                    .value
+                
+                self.listings = fetchedListings
+            } catch {
+                print("❌ Error fetching listings: \(error)")
+            }
+        }
 
     func deleteListing(listing: Listing) async {
         guard let id = listing.id else { return }

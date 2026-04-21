@@ -80,9 +80,35 @@ struct ListingDetailView: View {
                 .padding(.vertical, 5)
                 
                 HStack {
-                    Image(systemName: "calendar")
-                    Text("Posted on \(listing.formattedDate)")
-                }.font(.subheadline).foregroundColor(.secondary)
+                            Image(systemName: "calendar")
+                            Text("Posted on \(listing.formattedDate)")
+                        }.font(.subheadline).foregroundColor(.secondary)
+                        
+                // NEW: Clickable Seller Link
+                NavigationLink(destination: PublicProfileView(
+                    sellerName: listing.profiles?.full_name ?? "Unknown Seller",
+                    sellerId: listing.userId
+                )) {
+                    HStack {
+                        Image(systemName: "person.crop.circle")
+                            .foregroundColor(.blue)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Seller")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(listing.profiles?.full_name ?? "Unknown Seller")
+                                .fontWeight(.medium)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(PlainButtonStyle())
                 
                 Spacer()
                 

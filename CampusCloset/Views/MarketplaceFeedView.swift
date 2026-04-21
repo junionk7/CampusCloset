@@ -3,6 +3,21 @@ import SwiftUI
 struct MarketplaceFeedView: View {
     @EnvironmentObject var listingsVM: ListingsViewModel
     
+    // NEW: Native Search State
+    @State private var searchText = ""
+    
+    // NEW: Computed property to handle the search logic dynamically
+    var searchResults: [Listing] {
+        if searchText.isEmpty {
+            return listingsVM.filteredAndSortedListings
+        } else {
+            return listingsVM.filteredAndSortedListings.filter { listing in
+                listing.title.localizedCaseInsensitiveContains(searchText) ||
+                listing.description.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             
@@ -32,18 +47,10 @@ struct MarketplaceFeedView: View {
                 
                 // 3. Status Menu (Top Right)
                 Menu {
-                    // Option 1: All Statuses
-                    Button("All Statuses") {
-                        listingsVM.selectedStatus = nil
-                    }
-                    
+                    Button("All Statuses") { listingsVM.selectedStatus = nil }
                     Divider()
-                    
-                    // Options 2, 3, 4: Available, Sold, Unavailable
                     ForEach(Listing.ListingStatus.allCases, id: \.self) { status in
-                        Button(status.displayName) {
-                            listingsVM.selectedStatus = status
-                        }
+                        Button(status.displayName) { listingsVM.selectedStatus = status }
                     }
                 } label: {
                     FilterBadge(text: listingsVM.selectedStatus?.displayName ?? "All Statuses")
@@ -55,7 +62,8 @@ struct MarketplaceFeedView: View {
             .shadow(color: Color.black.opacity(0.05), radius: 2, y: 2)
             
             // MARK: - The Feed
-            List(listingsVM.filteredAndSortedListings) { listing in
+            // UPDATED: Now uses searchResults instead of filteredAndSortedListings directly
+            List(searchResults) { listing in
                 NavigationLink(destination: ListingDetailView(listing: listing)) {
                     VStack(alignment: .leading, spacing: 8) {
                         ZStack(alignment: .topTrailing) {
@@ -93,7 +101,17 @@ struct MarketplaceFeedView: View {
                         }
                         
                         Text(listing.title).font(.headline)
-                        Text(listing.price).foregroundColor(.green).fontWeight(.semibold)
+                        
+                        // UPDATED: Added HStack to put Price on left, Name on right
+                        HStack {
+                            Text(listing.price).foregroundColor(.green).fontWeight(.semibold)
+                            Spacer()
+                            // Displays Seller Name
+                            Text("By \(listing.profiles?.full_name ?? "Unknown Seller")")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
                         Text(listing.description).font(.subheadline).foregroundColor(.gray).lineLimit(2)
                     }
                     .padding().background(Color.white).cornerRadius(10).shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
@@ -101,6 +119,8 @@ struct MarketplaceFeedView: View {
                 .listRowSeparator(.hidden)
             }
             .listStyle(.plain)
+            // NEW: Native SwiftUI Search Modifier
+            .searchable(text: $searchText, prompt: "Search listings...")
             .task {
                 await listingsVM.fetchListings()
             }

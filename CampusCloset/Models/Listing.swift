@@ -12,7 +12,7 @@ struct Listing: Identifiable, Codable {
     let price: String
     let description: String
     
-    //Array for multiple images
+    // Array for multiple images
     var imageUrls: [String]?
     
     var createdAt: Date? = nil
@@ -20,6 +20,13 @@ struct Listing: Identifiable, Codable {
     var status: ListingStatus = .available
     var removalReason: String? = nil
     var category: ListingCategory
+    
+    // NEW: Nested struct to catch the joined profile data
+    var profiles: SellerProfile?
+    
+    struct SellerProfile: Codable {
+        let full_name: String?
+    }
     
     enum ListingStatus: String, Codable, CaseIterable {
         case available = "available"
@@ -46,6 +53,7 @@ struct Listing: Identifiable, Codable {
         case status
         case removalReason = "removal_reason"
         case category
+        case profiles // NEW Mapping for the joined data
     }
     
     var formattedDate: String {
