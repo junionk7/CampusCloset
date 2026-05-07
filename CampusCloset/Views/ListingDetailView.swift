@@ -20,6 +20,10 @@ struct ListingDetailView: View {
     @State private var isSending = false
     @State private var alertMessage = ""
     @State private var showingAlert = false
+    
+    @State private var showingReportAlert = false
+    @State private var showingBlockAlert = false
+
 
     var body: some View {
         ScrollView {
@@ -129,6 +133,59 @@ struct ListingDetailView: View {
             }
             .padding()
             .navigationTitle("Listing").navigationBarTitleDisplayMode(.inline)
+            
+            .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                // Only show Report/Block menu if it's NOT the user's own listing
+                                if listing.userId != authVM.currentUser?.id {
+                                    Menu {
+                                        Button(role: .destructive) {
+                                            Task {
+                                                // 1. Safely grab the listing ID
+                                                guard let id = listing.id else { return }
+                                                
+                                                // 2. Call the database function
+                                                let success = await listingsVM.reportListing(
+                                                    listingId: id,
+                                                    reason: "Reported via App"
+                                                )
+                                                
+                                                // 3. If the database save works, show the success alert
+                                                if success {
+                                                    showingReportAlert = true
+                                                } else {
+                                                    print("Failed to save report to Supabase.")
+                                                }
+                                            }
+                                        } label: {
+                                            Label("Report Item", systemImage: "flag")
+                                        }
+
+                                        Button(role: .destructive, action: { showingBlockAlert = true }) {
+                                            Label("Block Seller", systemImage: "nosign")
+                                        }
+                                    } label: {
+                                        Image(systemName: "ellipsis.circle")
+                                    }
+                                }
+                            }
+                        }
+                        .alert("Report Submitted", isPresented: $showingReportAlert) {
+                            Button("OK", role: .cancel) { }
+                        } message: {
+                            Text("Thank you for reporting. Our team will review this item within 24 hours.")
+                        }
+                        .alert("Block Seller?", isPresented: $showingBlockAlert) {
+                            Button("Block", role: .destructive) {
+                                Task {
+                                    await listingsVM.blockUser(blockedId: listing.userId)
+                                    dismiss() // Send user back to feed
+                                }
+                            }
+                            Button("Cancel", role: .cancel) { }
+                        } message: {
+                            Text("You will no longer see items from this seller.")
+                        }
             
             // ... (Message Sheet logic remains exactly the same as your provided code)
             .sheet(isPresented: $showingMessageSheet) {

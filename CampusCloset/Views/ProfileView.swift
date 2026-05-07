@@ -13,6 +13,7 @@ struct ProfileView: View {
     
     @State private var isEditing = false
     @State private var editedName = ""
+    @State private var showingDeleteAlert = false
     
     var userListings: [Listing] {
         listingsVM.listings.filter { $0.userId == authViewModel.currentUser?.id }
@@ -48,7 +49,6 @@ struct ProfileView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        // Email listed below the name
                         Text(authViewModel.currentUser?.email ?? "")
                             .font(.footnote)
                             .foregroundColor(.secondary)
@@ -102,42 +102,24 @@ struct ProfileView: View {
                                 ForEach(userListings) { listing in
                                     NavigationLink(destination: ListingDetailView(listing: listing)) {
                                         VStack(alignment: .leading) {
-                                            // UPDATED: Use displayImageUrl helper instead of imageUrl
                                             if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
                                                 AsyncImage(url: url) { phase in
                                                     switch phase {
                                                     case .success(let image):
-                                                        image
-                                                            .resizable()
-                                                            .scaledToFill()
-                                                            .frame(height: 120)
-                                                            .clipped()
-                                                            .cornerRadius(10)
+                                                        image.resizable().scaledToFill().frame(height: 120).clipped().cornerRadius(10)
                                                     case .failure, .empty:
-                                                        RoundedRectangle(cornerRadius: 10)
-                                                            .fill(Color.gray.opacity(0.2))
-                                                            .frame(height: 120)
+                                                        RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.2)).frame(height: 120)
                                                             .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                                                    @unknown default:
-                                                        EmptyView()
+                                                    @unknown default: EmptyView()
                                                     }
                                                 }
                                             } else {
-                                                // Fallback for listings with no images
-                                                RoundedRectangle(cornerRadius: 10)
-                                                    .fill(Color.gray.opacity(0.2))
-                                                    .frame(height: 120)
+                                                RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.2)).frame(height: 120)
                                                     .overlay(Image(systemName: "photo").foregroundColor(.gray))
                                             }
                                             
-                                            Text(listing.title)
-                                                .font(.caption)
-                                                .fontWeight(.bold)
-                                                .lineLimit(1)
-                                            
-                                            Text(listing.price)
-                                                .font(.caption2)
-                                                .foregroundColor(.green)
+                                            Text(listing.title).font(.caption).fontWeight(.bold).lineLimit(1)
+                                            Text(listing.price).font(.caption2).foregroundColor(.green)
                                         }
                                     }
                                 }
@@ -152,10 +134,22 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(role: .destructive) {
-                        Task { await authViewModel.signOut() }
+                    // MARK: - Consolidate actions into a Menu
+                    Menu {
+                        Button {
+                            Task { await authViewModel.signOut() }
+                        } label: {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                        
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            Label("Delete Account", systemImage: "trash")
+                        }
                     } label: {
-                        Text("Sign Out").foregroundColor(.red)
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 18))
                     }
                 }
             }
@@ -179,6 +173,14 @@ struct ProfileView: View {
             }
             .onAppear {
                 Task { await authViewModel.fetchProfileData() }
+            }
+            .alert("Delete Account?", isPresented: $showingDeleteAlert) {
+                Button("Delete", role: .destructive) {
+                    Task { await authViewModel.requestAccountDeletion() }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This action is permanent. All your listings will be removed and you will lose access to your account.")
             }
         }
     }

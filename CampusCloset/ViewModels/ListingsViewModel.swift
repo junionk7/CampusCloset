@@ -23,10 +23,12 @@ enum SortOption: String, CaseIterable {
 class ListingsViewModel: ObservableObject {
     @Published var listings: [Listing] = []
     
+    @Published var blockedUserIds: [UUID] = []
+    
     @Published var selectedCategory: Listing.ListingCategory? = nil
     @Published var selectedSortOption: SortOption = .mostRecent
     @Published var selectedStatus: Listing.ListingStatus? = nil
-    
+        
     var filteredAndSortedListings: [Listing] {
         var result = listings
         
@@ -42,25 +44,80 @@ class ListingsViewModel: ObservableObject {
         return result
     }
 
-    func fetchListings() async {
+    func fetchBlockedUsers() async {
+            guard let currentUserId = supabase.auth.currentUser?.id else { return }
             do {
-                // Note the syntax: we are explicitly grabbing everything from listings
-                // and the full_name from the profiles table linked via user_id
+                struct BlockedUser: Codable { let blocked_id: UUID }
+                let blocks: [BlockedUser] = try await supabase
+                    .from("blocked_users")
+                    .select("blocked_id")
+                    .eq("blocker_id", value: currentUserId)
+                    .execute()
+                    .value
+                
+                DispatchQueue.main.async {
+                    self.blockedUserIds = blocks.map { $0.blocked_id }
+                }
+            } catch {
+                print("Error fetching blocked users: \(error)")
+            }
+        }
+
+        func fetchListings() async {
+            await fetchBlockedUsers() // Fetch blocked users first
+            do {
                 let fetchedListings: [Listing] = try await supabase
                     .from("listings")
                     .select("""
                         *,
-                        profiles:user_id (
-                            full_name
-                        )
+                        profiles!user_id (full_name)
                     """)
                     .neq("status", value: "deleted")
                     .execute()
                     .value
                 
-                self.listings = fetchedListings
+                DispatchQueue.main.async {
+                    // Instantly filter out posts from people the user has blocked
+                    self.listings = fetchedListings.filter { !self.blockedUserIds.contains($0.userId) }
+                }
             } catch {
                 print("❌ Error fetching listings: \(error)")
+            }
+        }
+
+        func reportListing(listingId: UUID, reason: String) async -> Bool {
+            guard let reporterId = supabase.auth.currentUser?.id else { return false }
+            do {
+                struct ReportData: Encodable {
+                    let reporter_id: UUID
+                    let listing_id: UUID
+                    let reason: String
+                }
+                let report = ReportData(reporter_id: reporterId, listing_id: listingId, reason: reason)
+                try await supabase.from("reports").insert(report).execute()
+                return true
+            } catch {
+                print("❌ Error reporting listing: \(error)")
+                return false
+            }
+        }
+
+        func blockUser(blockedId: UUID) async -> Bool {
+            guard let blockerId = supabase.auth.currentUser?.id else { return false }
+            do {
+                struct BlockData: Encodable {
+                    let blocker_id: UUID
+                    let blocked_id: UUID
+                }
+                let block = BlockData(blocker_id: blockerId, blocked_id: blockedId)
+                try await supabase.from("blocked_users").insert(block).execute()
+                
+                // Refresh feed immediately to hide their posts
+                await fetchListings()
+                return true
+            } catch {
+                print("❌ Error blocking user: \(error)")
+                return false
             }
         }
 

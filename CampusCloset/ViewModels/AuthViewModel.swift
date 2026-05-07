@@ -207,4 +207,34 @@ class AuthViewModel: ObservableObject {
             self.errorMessage = error.localizedDescription
         }
     }
+    
+    
+    
+    // MARK: - Account Deletion (Apple Requirement)
+    func requestAccountDeletion() async {
+        guard let userId = currentUser?.id else { return }
+        
+        // We grab the email or name here to send it to your new column
+        let identifier = currentUser?.email ?? profileName
+        
+        do {
+            struct DeletionRequest: Encodable {
+                let user_id: UUID
+                let user_identifier: String // This matches your new SQL column
+            }
+            
+            let request = DeletionRequest(user_id: userId, user_identifier: identifier)
+            
+            try await supabase
+                .from("deletion_requests")
+                .insert(request)
+                .execute()
+            
+            // This signs the user out immediately, satisfying Apple's requirement
+            await signOut()
+            
+        } catch {
+            print("❌ Error requesting deletion: \(error)")
+        }
+    }
 }
