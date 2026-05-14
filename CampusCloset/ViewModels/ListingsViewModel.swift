@@ -193,7 +193,36 @@ class ListingsViewModel: ObservableObject {
         let payload = MessagePayload(sellerId: sellerId.uuidString.lowercased(), buyerEmail: buyerEmail, itemTitle: itemTitle, message: message)
         do {
             _ = try await supabase.functions.invoke("send-message", options: .init(headers: ["Content-Type": "application/json"], body: payload))
-            return true
         } catch { return false }
+
+        guard let buyerId = supabase.auth.currentUser?.id else { return true }
+
+        struct NotifInsert: Encodable {
+            let user_id: UUID
+            let type: String
+            let title: String
+            let body: String
+        }
+
+        let senderNotif = NotifInsert(
+            user_id: buyerId,
+            type: "message_sent",
+            title: "Message Sent",
+            body: "Your message about '\(itemTitle)' was delivered to the seller's email inbox. You'll get a notification here when they reply."
+        )
+        let sellerNotif = NotifInsert(
+            user_id: sellerId,
+            type: "message_received",
+            title: "New Interest in Your Listing",
+            body: "\(buyerEmail) is interested in your listing '\(itemTitle)' and has sent you an email. Reply to connect with them!"
+        )
+
+        do {
+            try await supabase.from("notifications").insert(senderNotif).execute()
+            try await supabase.from("notifications").insert(sellerNotif).execute()
+        } catch {
+            print("❌ Error inserting notifications: \(error)")
+        }
+        return true
     }
 }

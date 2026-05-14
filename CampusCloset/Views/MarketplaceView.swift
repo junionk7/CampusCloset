@@ -7,14 +7,29 @@
 import SwiftUI
 
 struct MarketplaceView: View {
-    // 1. You need to access the ViewModel here to call the fetch function
     @EnvironmentObject var listingsVM: ListingsViewModel
+    @EnvironmentObject var notificationsVM: NotificationsViewModel
 
     var body: some View {
         NavigationStack {
             MarketplaceFeedView()
                 .navigationTitle("Marketplace")
-                // 2. Add this modifier here
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        NavigationLink(destination: NotificationsView()) {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bell")
+                                    .font(.system(size: 18))
+                                if notificationsVM.unreadCount > 0 {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 9, height: 9)
+                                        .offset(x: 5, y: -4)
+                                }
+                            }
+                        }
+                    }
+                }
                 .onAppear {
                     Task {
                         await listingsVM.fetchListings()
@@ -24,8 +39,8 @@ struct MarketplaceView: View {
     }
 }
 
-// 3. Update your preview so it doesn't crash
 #Preview {
     MarketplaceView()
         .environmentObject(ListingsViewModel())
+        .environmentObject(NotificationsViewModel())
 }

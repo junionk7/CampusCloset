@@ -10,11 +10,9 @@ import SwiftUI
 @main
 struct CampusClosetApp: App {
     
-    // 1. Keep your original listings view model
     @StateObject var listingsVM = ListingsViewModel()
-    
-    // 2. Add the new auth view model
     @StateObject var authViewModel = AuthViewModel()
+    @StateObject var notificationsVM = NotificationsViewModel()
     
     var body: some Scene {
         WindowGroup {
@@ -23,6 +21,7 @@ struct CampusClosetApp: App {
                 ContentView()
                     .environmentObject(authViewModel)
                     .environmentObject(listingsVM)
+                    .environmentObject(notificationsVM)
                     .preferredColorScheme(.light)
             } else {
                 AuthView()

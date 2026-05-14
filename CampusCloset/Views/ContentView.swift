@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var notificationsVM: NotificationsViewModel
+
     var body: some View {
         TabView {
 
@@ -26,12 +28,16 @@ struct ContentView: View {
                     Label("Post", systemImage: "plus.circle")
                 }
 
+            NotificationsView()
+                .tabItem {
+                    Label("Notifications", systemImage: "bell")
+                }
+                .badge(notificationsVM.unreadCount)
+
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person")
                 }
-
-            
         }
     }
 }
@@ -40,4 +46,5 @@ struct ContentView: View {
     ContentView()
         .environmentObject(ListingsViewModel())
         .environmentObject(AuthViewModel())
+        .environmentObject(NotificationsViewModel())
 }

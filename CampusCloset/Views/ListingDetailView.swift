@@ -23,6 +23,7 @@ struct ListingDetailView: View {
     
     @State private var showingReportAlert = false
     @State private var showingBlockAlert = false
+    @State private var showSentOverlay = false
 
 
     var body: some View {
@@ -206,6 +207,31 @@ struct ListingDetailView: View {
             }
             .alert(isPresented: $showingAlert) { Alert(title: Text("Status"), message: Text(alertMessage), dismissButton: .default(Text("OK"))) }
         }
+        .overlay {
+            if showSentOverlay {
+                ZStack {
+                    Color.black.opacity(0.45).ignoresSafeArea()
+                    VStack(spacing: 18) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 64))
+                            .foregroundColor(.green)
+                        Text("Message Sent!")
+                            .font(.title2).fontWeight(.bold)
+                        Text("Your message was delivered to the seller's email inbox.\nYou'll get a notification here when they reply.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .padding(32)
+                    .background(Color.white)
+                    .cornerRadius(20)
+                    .shadow(radius: 24)
+                    .padding(.horizontal, 36)
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
     }
     
     private func handleSendMessage() async {
@@ -215,8 +241,16 @@ struct ListingDetailView: View {
         isSending = true
         let success = await listingsVM.sendMessage(sellerId: listing.userId, itemTitle: listing.title, buyerEmail: buyerEmail, message: messageText)
         isSending = false
-        if success { showingMessageSheet = false; messageText = ""; alertMessage = "Message sent successfully!" }
-        else { alertMessage = "Failed to send message. Please try again." }
-        showingAlert = true
+        if success {
+            showingMessageSheet = false
+            messageText = ""
+            withAnimation { showSentOverlay = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                withAnimation { showSentOverlay = false }
+            }
+        } else {
+            alertMessage = "Failed to send message. Please try again."
+            showingAlert = true
+        }
     }
 }
