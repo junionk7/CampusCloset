@@ -13,6 +13,10 @@ import Combine
 struct ProfileData: Codable {
     let full_name: String?
     let joined_at: String?
+    let dorm: String?
+    let class_year: String?
+    let bio: String?
+    let avatar_url: String?
 }
 
 struct ProfileInsert: Codable {
@@ -36,6 +40,10 @@ class AuthViewModel: ObservableObject {
     // Profile Data
     @Published var profileName: String = "Loading..."
     @Published var joinedDate: String = ""
+    @Published var dorm: String = ""
+    @Published var classYear: String = ""
+    @Published var bio: String = ""
+    @Published var avatarUrl: String? = nil
     
     init() {
         Task {
@@ -112,39 +120,66 @@ class AuthViewModel: ObservableObject {
     // MARK: - Profile Management
     
     // FIXED: Added the missing updateProfile function to resolve ProfileView errors
-    func updateProfile(newName: String) async {
+    func updateProfile(newName: String, dorm: String, classYear: String, bio: String) async {
         guard let userId = currentUser?.id else { return }
         isLoading = true
-        
+
         do {
             try await supabase
                 .from("profiles")
-                .update(["full_name": newName])
+                .update([
+                    "full_name":  newName,
+                    "dorm":       dorm,
+                    "class_year": classYear,
+                    "bio":        bio
+                ])
                 .eq("id", value: userId)
                 .execute()
-            
-            // Immediately update the UI
+
             self.profileName = newName
+            self.dorm        = dorm
+            self.classYear   = classYear
+            self.bio         = bio
         } catch {
             self.errorMessage = "Failed to update: \(error.localizedDescription)"
         }
         isLoading = false
     }
+
+    func updateAvatar(_ image: UIImage) async {
+        guard let userId = currentUser?.id,
+              let imageData = image.jpegData(compressionQuality: 0.7) else { return }
+        let fileName = "\(userId).jpg"
+        do {
+            try await supabase.storage
+                .from("avatars")
+                .upload(fileName, data: imageData, options: FileOptions(upsert: true))
+            let url = try supabase.storage.from("avatars").getPublicURL(path: fileName).absoluteString
+            try await supabase.from("profiles").update(["avatar_url": url]).eq("id", value: userId).execute()
+            self.avatarUrl = url
+        } catch {
+            self.errorMessage = "Avatar upload failed: \(error.localizedDescription)"
+        }
+    }
     
     func fetchProfileData() async {
         guard let userId = currentUser?.id else { return }
-        
+
         do {
             let profile: ProfileData = try await supabase
                 .from("profiles")
-                .select("full_name, joined_at")
+                .select("full_name, joined_at, dorm, class_year, bio, avatar_url")
                 .eq("id", value: userId)
                 .single()
                 .execute()
                 .value
-            
+
             self.profileName = profile.full_name ?? "Unknown"
-            
+            self.dorm        = profile.dorm       ?? ""
+            self.classYear   = profile.class_year ?? ""
+            self.bio         = profile.bio        ?? ""
+            self.avatarUrl   = profile.avatar_url
+
             if let dateString = profile.joined_at {
                 self.joinedDate = formatJoinDate(dateString)
             }

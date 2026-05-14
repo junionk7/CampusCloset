@@ -6,60 +6,113 @@
 //
 import SwiftUI
 import Auth
+import PhotosUI
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var listingsVM: ListingsViewModel
-    
+
     @State private var isEditing = false
     @State private var editedName = ""
+    @State private var editedDorm = ""
+    @State private var editedClassYear = ""
+    @State private var editedBio = ""
     @State private var showingDeleteAlert = false
-    
+    @State private var selectedAvatarItem: PhotosPickerItem? = nil
+
     var userListings: [Listing] {
         listingsVM.listings.filter { $0.userId == authViewModel.currentUser?.id }
     }
-    
+
     let columns = [GridItem(.flexible(), spacing: 15), GridItem(.flexible(), spacing: 15)]
+
+    let classYears: [String] = {
+        let current = Calendar.current.component(.year, from: Date())
+        return (current - 1 ... current + 7).map { "Class of \($0)" }
+    }()
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 25) {
-                    
+
                     // MARK: - Header Section
                     VStack(spacing: 5) {
                         ZStack(alignment: .bottomTrailing) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .resizable()
-                                .frame(width: 90, height: 90)
-                                .foregroundColor(.gray)
-                            
-                            Button {
-                                editedName = authViewModel.profileName
-                                isEditing = true
-                            } label: {
-                                Image(systemName: "pencil.circle.fill")
+                            // Avatar image
+                            if let urlString = authViewModel.avatarUrl, let url = URL(string: urlString) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image.resizable().scaledToFill()
+                                            .frame(width: 90, height: 90)
+                                            .clipShape(Circle())
+                                    default:
+                                        Image(systemName: "person.crop.circle.fill")
+                                            .resizable()
+                                            .frame(width: 90, height: 90)
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                            } else {
+                                Image(systemName: "person.crop.circle.fill")
+                                    .resizable()
+                                    .frame(width: 90, height: 90)
+                                    .foregroundColor(.gray)
+                            }
+
+                            // Camera button to change avatar
+                            PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
+                                Image(systemName: "camera.circle.fill")
                                     .symbolRenderingMode(.multicolor)
                                     .font(.system(size: 24))
                                     .background(Color.white.clipShape(Circle()))
                             }
                         }
-                        
+                        .onChange(of: selectedAvatarItem) { _, newItem in
+                            Task {
+                                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                   let image = UIImage(data: data) {
+                                    await authViewModel.updateAvatar(image)
+                                }
+                            }
+                        }
+
                         Text(authViewModel.profileName)
                             .font(.title2)
                             .fontWeight(.bold)
-                        
+
                         Text(authViewModel.currentUser?.email ?? "")
                             .font(.footnote)
                             .foregroundColor(.secondary)
-                        
+
                         Text(authViewModel.joinedDate)
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.top, 2)
+
+                        if !authViewModel.classYear.isEmpty {
+                            Text(authViewModel.classYear)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        if !authViewModel.dorm.isEmpty {
+                            Text(authViewModel.dorm)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        if !authViewModel.bio.isEmpty {
+                            Text(authViewModel.bio)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
                     }
                     .padding(.top)
-                    
+
                     // MARK: - Stats Row
                     HStack(spacing: 60) {
                         VStack {
@@ -70,7 +123,7 @@ struct ProfileView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         VStack {
                             Text("0")
                                 .font(.title3)
@@ -85,15 +138,15 @@ struct ProfileView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(15)
                     .padding(.horizontal)
-                    
+
                     Divider().padding(.horizontal)
-                    
+
                     // MARK: - Post Gallery
                     VStack(alignment: .leading) {
                         Text("Active Posts")
                             .font(.headline)
                             .padding(.horizontal)
-                        
+
                         if userListings.isEmpty {
                             ContentUnavailableView("No listings yet", systemImage: "tag.slash")
                                 .padding(.top, 30)
@@ -117,7 +170,7 @@ struct ProfileView: View {
                                                 RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.2)).frame(height: 120)
                                                     .overlay(Image(systemName: "photo").foregroundColor(.gray))
                                             }
-                                            
+
                                             Text(listing.title).font(.caption).fontWeight(.bold).lineLimit(1)
                                             Text(listing.price).font(.caption2).foregroundColor(.green)
                                         }
@@ -134,21 +187,30 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    // MARK: - Consolidate actions into a Menu
                     Menu {
+                        Button {
+                            editedName      = authViewModel.profileName
+                            editedDorm      = authViewModel.dorm
+                            editedClassYear = authViewModel.classYear
+                            editedBio       = authViewModel.bio
+                            isEditing = true
+                        } label: {
+                            Label("Edit Profile", systemImage: "pencil")
+                        }
+
                         Button {
                             Task { await authViewModel.signOut() }
                         } label: {
                             Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
                         }
-                        
+
                         Button(role: .destructive) {
                             showingDeleteAlert = true
                         } label: {
                             Label("Delete Account", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "gearshape")
                             .font(.system(size: 18))
                     }
                 }
@@ -159,17 +221,42 @@ struct ProfileView: View {
                         Section("Display Name") {
                             TextField("Enter name", text: $editedName)
                         }
+
+                        Section("Class Year") {
+                            Picker("Class Year", selection: $editedClassYear) {
+                                Text("Not set").tag("")
+                                ForEach(classYears, id: \.self) { year in
+                                    Text(year).tag(year)
+                                }
+                            }
+                        }
+
+                        Section("Dorm") {
+                            TextField("e.g. Smith Hall", text: $editedDorm)
+                        }
+
+                        Section("About Me") {
+                            TextField("Tell others a bit about yourself...", text: $editedBio, axis: .vertical)
+                                .lineLimit(4, reservesSpace: true)
+                        }
+
                         Button("Save Changes") {
                             Task {
-                                await authViewModel.updateProfile(newName: editedName)
+                                await authViewModel.updateProfile(
+                                    newName: editedName,
+                                    dorm: editedDorm,
+                                    classYear: editedClassYear,
+                                    bio: editedBio
+                                )
                                 isEditing = false
                             }
                         }
                         .disabled(editedName.isEmpty)
                     }
                     .navigationTitle("Edit Profile")
+                    .navigationBarTitleDisplayMode(.inline)
                 }
-                .presentationDetents([.medium])
+                .presentationDetents([.large])
             }
             .onAppear {
                 Task { await authViewModel.fetchProfileData() }

@@ -26,12 +26,14 @@ struct SearchView: View {
         
         NavigationStack {
             List(filteredListings) { listing in
-                VStack(alignment: .leading) {
-                    Text(listing.title)
-                        .font(.headline)
-                    
-                    Text(listing.price)
-                        .foregroundColor(.green)
+                NavigationLink(destination: ListingDetailView(listing: listing)) {
+                    VStack(alignment: .leading) {
+                        Text(listing.title)
+                            .font(.headline)
+
+                        Text(listing.price)
+                            .foregroundColor(.green)
+                    }
                 }
             }
             .searchable(text: $searchText)
