@@ -62,7 +62,7 @@ struct ListingDetailView: View {
                 
                 // MARK: - Listing Details
                 Text(listing.title).font(.title).fontWeight(.bold)
-                Text(listing.price).font(.title2).foregroundColor(.green)
+                Text("$\(listing.price)").font(.title2).foregroundColor(.green)
                 Text(listing.description).font(.body)
                 
                 HStack {

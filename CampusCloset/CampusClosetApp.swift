@@ -21,11 +21,13 @@ struct CampusClosetApp: App {
             // 3. Logic: If logged in, show the app. If not, show Login.
             if authViewModel.isAuthenticated {
                 ContentView()
-                    .environmentObject(authViewModel) // Pass auth to the whole app
-                    .environmentObject(listingsVM)    // Pass listings to the whole app
+                    .environmentObject(authViewModel)
+                    .environmentObject(listingsVM)
+                    .preferredColorScheme(.light)
             } else {
                 AuthView()
                     .environmentObject(authViewModel)
+                    .preferredColorScheme(.light)
             }
         }
     }

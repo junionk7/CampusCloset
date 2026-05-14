@@ -28,7 +28,11 @@ struct PostItemView: View {
             Form {
                 Section(header: Text("Item Information")) {
                     TextField("Item Title", text: $title)
-                    TextField("Price (e.g. $15 or Free)", text: $price).keyboardType(.default)
+                    TextField("Price", text: $price)
+                        .keyboardType(.decimalPad)
+                        .onChange(of: price) { _, newValue in
+                            price = newValue.filter { $0.isNumber || $0 == "." }
+                        }
                     Picker("Category", selection: $selectedCategory) {
                         ForEach(Listing.ListingCategory.allCases, id: \.self) { cat in Text(cat.displayName).tag(cat) }
                     }

@@ -104,7 +104,7 @@ struct MarketplaceFeedView: View {
                         
                         // UPDATED: Added HStack to put Price on left, Name on right
                         HStack {
-                            Text(listing.price).foregroundColor(.green).fontWeight(.semibold)
+                            Text("$\(listing.price)").foregroundColor(.green).fontWeight(.semibold)
                             Spacer()
                             // Displays Seller Name
                             Text("By \(listing.profiles?.full_name ?? "Unknown Seller")")
