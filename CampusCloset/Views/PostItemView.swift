@@ -15,6 +15,7 @@ struct PostItemView: View {
     
     @State private var title = ""
     @State private var price = ""
+    @State private var isFree = false
     @State private var description = ""
     @State private var selectedCategory: Listing.ListingCategory = .other
     
@@ -28,11 +29,17 @@ struct PostItemView: View {
             Form {
                 Section(header: Text("Item Information")) {
                     TextField("Item Title", text: $title)
-                    TextField("Price", text: $price)
-                        .keyboardType(.decimalPad)
-                        .onChange(of: price) { _, newValue in
-                            price = newValue.filter { $0.isNumber || $0 == "." }
-                        }
+                    Toggle(isOn: $isFree) {
+                        Label("Free", systemImage: "gift")
+                    }
+                    .tint(.green)
+                    if !isFree {
+                        TextField("Price", text: $price)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: price) { _, newValue in
+                                price = newValue.filter { $0.isNumber || $0 == "." }
+                            }
+                    }
                     Picker("Category", selection: $selectedCategory) {
                         ForEach(Listing.ListingCategory.allCases, id: \.self) { cat in Text(cat.displayName).tag(cat) }
                     }
@@ -102,7 +109,7 @@ struct PostItemView: View {
             
             await listingsVM.addListing(
                 title: title,
-                price: price,
+                price: isFree ? "Free" : price,
                 description: description,
                 userId: userId,
                 imageUrls: links, // Pass array
@@ -111,6 +118,7 @@ struct PostItemView: View {
             
             title = ""
             price = ""
+            isFree = false
             description = ""
             selectedCategory = .other
             selectedImages.removeAll()

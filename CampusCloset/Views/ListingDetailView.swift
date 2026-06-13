@@ -64,7 +64,7 @@ struct ListingDetailView: View {
                 
                 // MARK: - Listing Details
                 Text(listing.title).font(.title).fontWeight(.bold)
-                Text("$\(listing.price)").font(.title2).foregroundColor(.green)
+                Text(listing.priceAsDouble == 0 ? "Free" : "$\(listing.price)").font(.title2).foregroundColor(.green)
                 Text(listing.description).font(.body)
                 
                 HStack {

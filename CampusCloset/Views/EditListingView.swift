@@ -13,6 +13,7 @@ struct EditListingView: View {
 
     @State private var title: String
     @State private var price: String
+    @State private var isFree: Bool
     @State private var description: String
     @State private var selectedCategory: Listing.ListingCategory
     @State private var existingImageUrls: [String]
@@ -24,7 +25,9 @@ struct EditListingView: View {
     init(listing: Listing) {
         self.listing = listing
         _title = State(initialValue: listing.title)
-        _price = State(initialValue: listing.price)
+        let free = listing.price.lowercased() == "free"
+        _isFree = State(initialValue: free)
+        _price = State(initialValue: free ? "" : listing.price)
         _description = State(initialValue: listing.description)
         _selectedCategory = State(initialValue: listing.category)
         _existingImageUrls = State(initialValue: listing.imageUrls ?? [])
@@ -35,11 +38,17 @@ struct EditListingView: View {
             Form {
                 Section(header: Text("Item Information")) {
                     TextField("Item Title", text: $title)
-                    TextField("Price", text: $price)
-                        .keyboardType(.decimalPad)
-                        .onChange(of: price) { _, newValue in
-                            price = newValue.filter { $0.isNumber || $0 == "." }
-                        }
+                    Toggle(isOn: $isFree) {
+                        Label("Free", systemImage: "gift")
+                    }
+                    .tint(.green)
+                    if !isFree {
+                        TextField("Price", text: $price)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: price) { _, newValue in
+                                price = newValue.filter { $0.isNumber || $0 == "." }
+                            }
+                    }
                     Picker("Category", selection: $selectedCategory) {
                         ForEach(Listing.ListingCategory.allCases, id: \.self) { cat in
                             Text(cat.displayName).tag(cat)
@@ -145,7 +154,7 @@ struct EditListingView: View {
             await listingsVM.updateListing(
                 listing: listing,
                 title: title,
-                price: price,
+                price: isFree ? "Free" : price,
                 description: description,
                 category: selectedCategory,
                 imageUrls: finalUrls
