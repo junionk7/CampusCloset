@@ -24,6 +24,7 @@ struct ListingDetailView: View {
     @State private var showingReportAlert = false
     @State private var showingBlockAlert = false
     @State private var showSentOverlay = false
+    @State private var showingEditSheet = false
 
 
     var body: some View {
@@ -115,21 +116,29 @@ struct ListingDetailView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 
-                Spacer()
-                
-                Button(action: { showingMessageSheet = true }) {
-                    Text("Message Seller").fontWeight(.semibold).frame(maxWidth: .infinity).padding()
-                        .background(Color.blue).foregroundColor(.white).cornerRadius(10)
-                }
-                
-                if listing.userId == authVM.currentUser?.id {
-                    Button(role: .destructive) {
-                        Task { await listingsVM.deleteListing(listing: listing); dismiss() }
-                    } label: {
-                        HStack { Image(systemName: "trash"); Text("Delete Listing") }
-                            .fontWeight(.semibold).frame(maxWidth: .infinity).padding()
-                            .background(Color.red.opacity(0.1)).foregroundColor(.red).cornerRadius(10)
-                    }.padding(.top, 10)
+                VStack(spacing: 10) {
+                    Button(action: { showingMessageSheet = true }) {
+                        Text("Message Seller").fontWeight(.semibold).frame(maxWidth: .infinity).padding()
+                            .background(Color.blue).foregroundColor(.white).cornerRadius(10)
+                    }
+
+                    if listing.userId == authVM.currentUser?.id {
+                        Button {
+                            showingEditSheet = true
+                        } label: {
+                            HStack { Image(systemName: "pencil"); Text("Edit Listing") }
+                                .fontWeight(.semibold).frame(maxWidth: .infinity).padding()
+                                .background(Color.blue.opacity(0.1)).foregroundColor(.blue).cornerRadius(10)
+                        }
+
+                        Button(role: .destructive) {
+                            Task { await listingsVM.deleteListing(listing: listing); dismiss() }
+                        } label: {
+                            HStack { Image(systemName: "trash"); Text("Delete Listing") }
+                                .fontWeight(.semibold).frame(maxWidth: .infinity).padding()
+                                .background(Color.red.opacity(0.1)).foregroundColor(.red).cornerRadius(10)
+                        }
+                    }
                 }
             }
             .padding()
@@ -206,6 +215,10 @@ struct ListingDetailView: View {
                 }
             }
             .alert(isPresented: $showingAlert) { Alert(title: Text("Status"), message: Text(alertMessage), dismissButton: .default(Text("OK"))) }
+            .sheet(isPresented: $showingEditSheet) {
+                EditListingView(listing: listing)
+                    .environmentObject(listingsVM)
+            }
         }
         .overlay {
             if showSentOverlay {

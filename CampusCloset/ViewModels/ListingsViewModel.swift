@@ -121,6 +121,25 @@ class ListingsViewModel: ObservableObject {
             }
         }
 
+    func updateListing(listing: Listing, title: String, price: String, description: String, category: Listing.ListingCategory, imageUrls: [String]) async {
+        guard let id = listing.id else { return }
+        struct ListingUpdate: Encodable {
+            let title: String
+            let price: String
+            let description: String
+            let category: String
+            let image_urls: [String]
+        }
+        let payload = ListingUpdate(title: title, price: price, description: description, category: category.rawValue, image_urls: imageUrls)
+        do {
+            try await supabase.from("listings")
+                .update(payload)
+                .eq("id", value: id)
+                .execute()
+            await fetchListings()
+        } catch { print("❌ Error updating listing: \(error)") }
+    }
+
     func deleteListing(listing: Listing) async {
         guard let id = listing.id else { return }
         do {

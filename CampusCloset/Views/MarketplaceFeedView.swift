@@ -1,10 +1,12 @@
 import SwiftUI
+import Auth
 
 struct MarketplaceFeedView: View {
     @EnvironmentObject var listingsVM: ListingsViewModel
-    
-    // NEW: Native Search State
+    @EnvironmentObject var authVM: AuthViewModel
+
     @State private var searchText = ""
+    @State private var listingToEdit: Listing? = nil
     
     // NEW: Computed property to handle the search logic dynamically
     var searchResults: [Listing] {
@@ -64,9 +66,10 @@ struct MarketplaceFeedView: View {
             // MARK: - The Feed
             // UPDATED: Now uses searchResults instead of filteredAndSortedListings directly
             List(searchResults) { listing in
+                ZStack(alignment: .topLeading) {
                 NavigationLink(destination: ListingDetailView(listing: listing)) {
                     VStack(alignment: .leading, spacing: 8) {
-                        ZStack(alignment: .topTrailing) {
+                        ZStack {
                             // Image selection
                             if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
                                 AsyncImage(url: url) { phase in
@@ -85,19 +88,25 @@ struct MarketplaceFeedView: View {
                                 Rectangle().fill(Color.gray.opacity(0.3)).frame(height: 180).cornerRadius(8).overlay(Text("No Image").foregroundColor(.gray))
                             }
                             
-                            // Badges (Status & Category)
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text(listing.status.displayName)
-                                    .font(.caption2).fontWeight(.bold).foregroundColor(.white)
-                                    .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(statusColor(listing.status)).cornerRadius(4)
-                                
-                                Text(listing.category.displayName)
-                                    .font(.caption2).fontWeight(.bold).foregroundColor(.black)
-                                    .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(Color.white.opacity(0.9)).cornerRadius(4)
+                            // Badges (Status & Category) — top right
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        Text(listing.status.displayName)
+                                            .font(.caption2).fontWeight(.bold).foregroundColor(.white)
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(statusColor(listing.status)).cornerRadius(4)
+                                        Text(listing.category.displayName)
+                                            .font(.caption2).fontWeight(.bold).foregroundColor(.black)
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(Color.white.opacity(0.9)).cornerRadius(4)
+                                    }
+                                }
+                                Spacer()
                             }
                             .padding(8)
+
                         }
                         
                         Text(listing.title).font(.headline)
@@ -116,6 +125,20 @@ struct MarketplaceFeedView: View {
                     }
                     .padding().background(Color.white).cornerRadius(10).shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                 }
+                if listing.userId == authVM.currentUser?.id {
+                    Button {
+                        listingToEdit = listing
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.white)
+                            .background(Color.blue.clipShape(Circle()))
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    .padding([.top, .leading], 20)
+                }
+                } // end outer ZStack
                 .listRowSeparator(.hidden)
             }
             .listStyle(.plain)
@@ -123,6 +146,11 @@ struct MarketplaceFeedView: View {
             .searchable(text: $searchText, prompt: "Search listings...")
             .task {
                 await listingsVM.fetchListings()
+            }
+            .sheet(item: $listingToEdit) { listing in
+                EditListingView(listing: listing)
+                    .environmentObject(listingsVM)
+                    .environmentObject(authVM)
             }
         }
     }
