@@ -202,46 +202,22 @@ class ListingsViewModel: ObservableObject {
         }
     
     struct MessagePayload: Codable {
-        let sellerId: String
-        let buyerEmail: String
-        let itemTitle: String
+        let listingId: String
         let message: String
     }
-    
-    func sendMessage(sellerId: UUID, itemTitle: String, buyerEmail: String, message: String) async -> Bool {
-        let payload = MessagePayload(sellerId: sellerId.uuidString.lowercased(), buyerEmail: buyerEmail, itemTitle: itemTitle, message: message)
+
+    // Sends a buyer's message to a seller via the `send-message` Edge Function.
+    // The function derives the buyer's identity from the auth JWT, looks up the
+    // seller from the listing, and creates BOTH in-app notifications server-side.
+    // No identity or notification data is trusted from the client. [Fixes #2, #7]
+    func sendMessage(listingId: UUID, message: String) async -> Bool {
+        let payload = MessagePayload(listingId: listingId.uuidString.lowercased(), message: message)
         do {
             _ = try await supabase.functions.invoke("send-message", options: .init(headers: ["Content-Type": "application/json"], body: payload))
-        } catch { return false }
-
-        guard let buyerId = supabase.auth.currentUser?.id else { return true }
-
-        struct NotifInsert: Encodable {
-            let user_id: UUID
-            let type: String
-            let title: String
-            let body: String
-        }
-
-        let senderNotif = NotifInsert(
-            user_id: buyerId,
-            type: "message_sent",
-            title: "Message Sent",
-            body: "Your message about '\(itemTitle)' was delivered to the seller's email inbox. You'll get a notification here when they reply."
-        )
-        let sellerNotif = NotifInsert(
-            user_id: sellerId,
-            type: "message_received",
-            title: "New Interest in Your Listing",
-            body: "\(buyerEmail) is interested in your listing '\(itemTitle)' and has sent you an email. Reply to connect with them!"
-        )
-
-        do {
-            try await supabase.from("notifications").insert(senderNotif).execute()
-            try await supabase.from("notifications").insert(sellerNotif).execute()
+            return true
         } catch {
-            print("❌ Error inserting notifications: \(error)")
+            print("❌ Error sending message: \(error)")
+            return false
         }
-        return true
     }
 }

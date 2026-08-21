@@ -248,11 +248,14 @@ struct ListingDetailView: View {
     }
     
     private func handleSendMessage() async {
-        guard let buyerEmail = authVM.currentUser?.email else {
+        guard authVM.currentUser != nil else {
             alertMessage = "You must be logged in to send a message."; showingAlert = true; return
         }
+        guard let listingId = listing.id else {
+            alertMessage = "This listing can't be messaged right now. Please try again."; showingAlert = true; return
+        }
         isSending = true
-        let success = await listingsVM.sendMessage(sellerId: listing.userId, itemTitle: listing.title, buyerEmail: buyerEmail, message: messageText)
+        let success = await listingsVM.sendMessage(listingId: listingId, message: messageText)
         isSending = false
         if success {
             showingMessageSheet = false

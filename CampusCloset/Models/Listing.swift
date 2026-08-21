@@ -40,8 +40,12 @@ struct Listing: Identifiable, Codable {
         case clothing = "Clothing"
         case school = "School"
         case appliances = "Appliances"
+        case electronics = "Electronics"
+        case dorm = "Dorm & Room"
+        case sports = "Sports & Outdoors"
+        case games = "Games & Entertainment"
         case other = "Other"
-        
+
         var displayName: String { self.rawValue }
     }
     
