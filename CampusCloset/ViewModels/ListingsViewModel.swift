@@ -22,13 +22,17 @@ enum SortOption: String, CaseIterable {
 @MainActor
 class ListingsViewModel: ObservableObject {
     @Published var listings: [Listing] = []
-    
+
     @Published var blockedUserIds: [UUID] = []
-    
+
+    // Listing ids the current user has saved. Backed by the `favorites` table
+    // (see supabase/favorites.sql).
+    @Published var favoriteListingIds: Set<UUID> = []
+
     @Published var selectedCategory: Listing.ListingCategory? = nil
     @Published var selectedSortOption: SortOption = .mostRecent
     @Published var selectedStatus: Listing.ListingStatus? = nil
-        
+
     var filteredAndSortedListings: [Listing] {
         var result = listings
         
@@ -65,6 +69,7 @@ class ListingsViewModel: ObservableObject {
 
         func fetchListings() async {
             await fetchBlockedUsers() // Fetch blocked users first
+            await fetchFavorites()    // Keep the hearts in sync with the feed
             do {
                 let fetchedListings: [Listing] = try await supabase
                     .from("listings")
@@ -75,7 +80,7 @@ class ListingsViewModel: ObservableObject {
                     .neq("status", value: "deleted")
                     .execute()
                     .value
-                
+
                 DispatchQueue.main.async {
                     // Instantly filter out posts from people the user has blocked
                     self.listings = fetchedListings.filter { !self.blockedUserIds.contains($0.userId) }
@@ -84,6 +89,97 @@ class ListingsViewModel: ObservableObject {
                 print("❌ Error fetching listings: \(error)")
             }
         }
+
+    // MARK: - Saved Items (Favorites)
+
+    /// The user's saved listings, in current feed order. Anything sold, deleted
+    /// or posted by a blocked user falls out on its own, because this filters
+    /// against `listings` rather than holding its own copies.
+    var favoriteListings: [Listing] {
+        listings.filter { listing in
+            guard let id = listing.id else { return false }
+            return favoriteListingIds.contains(id)
+        }
+    }
+
+    func isFavorite(_ listing: Listing) -> Bool {
+        guard let id = listing.id else { return false }
+        return favoriteListingIds.contains(id)
+    }
+
+    func fetchFavorites() async {
+        guard let userId = supabase.auth.currentUser?.id else { return }
+        do {
+            struct FavoriteRow: Codable { let listing_id: UUID }
+            let rows: [FavoriteRow] = try await supabase
+                .from("favorites")
+                .select("listing_id")
+                .eq("user_id", value: userId)
+                .execute()
+                .value
+
+            self.favoriteListingIds = Set(rows.map { $0.listing_id })
+        } catch {
+            print("❌ Error fetching favorites: \(error)")
+        }
+    }
+
+    /// Flips the heart immediately, then puts it back if the write fails, so the
+    /// icon never claims a save that didn't land.
+    func toggleFavorite(_ listing: Listing) async {
+        guard let listingId = listing.id,
+              let userId = supabase.auth.currentUser?.id else { return }
+
+        let wasFavorite = favoriteListingIds.contains(listingId)
+        if wasFavorite {
+            favoriteListingIds.remove(listingId)
+        } else {
+            favoriteListingIds.insert(listingId)
+        }
+
+        do {
+            if wasFavorite {
+                try await supabase.from("favorites")
+                    .delete()
+                    .eq("user_id", value: userId)
+                    .eq("listing_id", value: listingId)
+                    .execute()
+            } else {
+                struct FavoriteInsert: Encodable {
+                    let user_id: UUID
+                    let listing_id: UUID
+                }
+                try await supabase.from("favorites")
+                    .insert(FavoriteInsert(user_id: userId, listing_id: listingId))
+                    .execute()
+            }
+        } catch {
+            print("❌ Error toggling favorite: \(error)")
+            if wasFavorite {
+                favoriteListingIds.insert(listingId)
+            } else {
+                favoriteListingIds.remove(listingId)
+            }
+        }
+    }
+
+    // MARK: - Profile Stats
+
+    /// Every non-deleted listing by a seller, newest first — what their profile
+    /// gallery shows, sold items included.
+    func sellerListings(for userId: UUID) -> [Listing] {
+        listings
+            .filter { $0.userId == userId }
+            .sorted { ($0.createdAt ?? Date.distantPast) > ($1.createdAt ?? Date.distantPast) }
+    }
+
+    func activeCount(for userId: UUID) -> Int {
+        listings.filter { $0.userId == userId && $0.status == .available }.count
+    }
+
+    func soldCount(for userId: UUID) -> Int {
+        listings.filter { $0.userId == userId && $0.status == .sold }.count
+    }
 
         func reportListing(listingId: UUID, reason: String) async -> Bool {
             guard let reporterId = supabase.auth.currentUser?.id else { return false }

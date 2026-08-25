@@ -44,6 +44,9 @@ struct NotificationsView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .refreshable {
+                        await notificationsVM.fetchNotifications()
+                    }
                 }
             }
             .navigationTitle("Notifications")

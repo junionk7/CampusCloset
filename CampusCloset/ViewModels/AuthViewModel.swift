@@ -190,20 +190,7 @@ class AuthViewModel: ObservableObject {
     }
     
     private func formatJoinDate(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
-        var date = formatter.date(from: isoString)
-        if date == nil {
-            formatter.formatOptions = [.withInternetDateTime]
-            date = formatter.date(from: isoString)
-        }
-        
-        guard let validDate = date else { return "Recently joined" }
-        
-        let displayFormatter = DateFormatter()
-        displayFormatter.dateFormat = "'Joined' MMM yyyy"
-        return displayFormatter.string(from: validDate)
+        PublicProfile.formatJoinDate(isoString)
     }
     
     func resendConfirmationEmail(email: String) async {

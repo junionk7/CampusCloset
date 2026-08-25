@@ -64,7 +64,7 @@ struct ListingDetailView: View {
                 
                 // MARK: - Listing Details
                 Text(listing.title).font(.title).fontWeight(.bold)
-                Text(listing.priceAsDouble == 0 ? "Free" : "$\(listing.price)").font(.title2).foregroundColor(.green)
+                Text(listing.displayPrice).font(.title2).foregroundColor(.green)
                 Text(listing.description).font(.body)
                 
                 HStack {
@@ -145,6 +145,14 @@ struct ListingDetailView: View {
             .navigationTitle("Listing").navigationBarTitleDisplayMode(.inline)
             
             .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                // Saving your own listing isn't a thing — it's
+                                // already on your profile.
+                                if listing.userId != authVM.currentUser?.id {
+                                    FavoriteButton(listing: listing, size: 18, style: .plain)
+                                }
+                            }
+
                             ToolbarItem(placement: .navigationBarTrailing) {
                                 // Only show Report/Block menu if it's NOT the user's own listing
                                 if listing.userId != authVM.currentUser?.id {

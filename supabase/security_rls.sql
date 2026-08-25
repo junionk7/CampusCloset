@@ -1,10 +1,17 @@
 -- ============================================================================
 -- CampusCloset — Row-Level Security (RLS) hardening
 -- ============================================================================
--- HOW TO APPLY:  Supabase Dashboard → SQL Editor → New query → paste ALL of
--- this → Run.  (This cannot be applied from the app repo; it changes the live
--- database.)  This script is safe to re-run: it drops each policy before
--- recreating it.
+-- STATUS: APPLIED to the live database (confirmed 2026-08-25), including the
+-- notifications INSERT-policy drop further down.
+--
+-- WHY THIS FILE STAYS IN THE REPO: it is the record of these policies and the
+-- reasoning behind each one. Re-run it to rebuild them on a new or staging
+-- Supabase project.
+--
+-- HOW TO APPLY (again, elsewhere):  Supabase Dashboard → SQL Editor → New
+-- query → paste ALL of this → Run.  (This cannot be applied from the app repo;
+-- it changes the live database.)  This script is safe to re-run: it drops each
+-- policy before recreating it.
 --
 -- WHAT IT FIXES:
 --   Critical #1  deleteListing — anyone could soft-delete any listing
@@ -112,6 +119,13 @@ create policy profiles_insert_own on public.profiles
 -- Fixes #7 (with the updated Edge Function).
 -- ----------------------------------------------------------------------------
 alter table public.notifications enable row level security;
+
+-- Remove the legacy permissive INSERT policy. It allowed ANY authenticated user
+-- to insert a notification into ANY user's feed (with_check auth.role() =
+-- 'authenticated', no ownership check) — this was the actual #7 hole. After this
+-- drop there is NO client insert policy, so only the service-role Edge Function
+-- can create notifications.
+drop policy if exists "Authenticated can insert notifications" on public.notifications;
 
 -- You can only read your own notifications.
 drop policy if exists notifications_select_own on public.notifications;

@@ -21,7 +21,18 @@ struct ProfileView: View {
     @State private var selectedAvatarItem: PhotosPickerItem? = nil
 
     var userListings: [Listing] {
-        listingsVM.listings.filter { $0.userId == authViewModel.currentUser?.id }
+        guard let userId = authViewModel.currentUser?.id else { return [] }
+        return listingsVM.sellerListings(for: userId)
+    }
+
+    var activeCount: Int {
+        guard let userId = authViewModel.currentUser?.id else { return 0 }
+        return listingsVM.activeCount(for: userId)
+    }
+
+    var soldCount: Int {
+        guard let userId = authViewModel.currentUser?.id else { return 0 }
+        return listingsVM.soldCount(for: userId)
     }
 
     let columns = [GridItem(.flexible(), spacing: 15), GridItem(.flexible(), spacing: 15)]
@@ -114,21 +125,30 @@ struct ProfileView: View {
                     .padding(.top)
 
                     // MARK: - Stats Row
-                    HStack(spacing: 60) {
+                    HStack(spacing: 40) {
                         VStack {
-                            Text("\(userListings.count)")
+                            Text("\(activeCount)")
                                 .font(.title3)
                                 .fontWeight(.bold)
-                            Text("Listings")
+                            Text("Active")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
 
                         VStack {
-                            Text("0")
+                            Text("\(soldCount)")
                                 .font(.title3)
                                 .fontWeight(.bold)
                             Text("Sold")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        VStack {
+                            Text("\(listingsVM.favoriteListings.count)")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            Text("Saved")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -143,7 +163,7 @@ struct ProfileView: View {
 
                     // MARK: - Post Gallery
                     VStack(alignment: .leading) {
-                        Text("Active Posts")
+                        Text("My Posts")
                             .font(.headline)
                             .padding(.horizontal)
 
@@ -154,26 +174,34 @@ struct ProfileView: View {
                             LazyVGrid(columns: columns, spacing: 15) {
                                 ForEach(userListings) { listing in
                                     NavigationLink(destination: ListingDetailView(listing: listing)) {
-                                        VStack(alignment: .leading) {
-                                            if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
-                                                AsyncImage(url: url) { phase in
-                                                    switch phase {
-                                                    case .success(let image):
-                                                        image.resizable().scaledToFill().frame(height: 120).clipped().cornerRadius(10)
-                                                    case .failure, .empty:
-                                                        RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.2)).frame(height: 120)
-                                                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                                                    @unknown default: EmptyView()
-                                                    }
-                                                }
-                                            } else {
-                                                RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.2)).frame(height: 120)
-                                                    .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                                            }
+                                        ListingGridTile(listing: listing)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
 
-                                            Text(listing.title).font(.caption).fontWeight(.bold).lineLimit(1)
-                                            Text(listing.price).font(.caption2).foregroundColor(.green)
-                                        }
+                    Divider().padding(.horizontal)
+
+                    // MARK: - Saved Items
+                    VStack(alignment: .leading) {
+                        Text("Saved")
+                            .font(.headline)
+                            .padding(.horizontal)
+
+                        if listingsVM.favoriteListings.isEmpty {
+                            ContentUnavailableView(
+                                "Nothing saved yet",
+                                systemImage: "heart",
+                                description: Text("Tap the heart on any listing to keep it here.")
+                            )
+                            .padding(.top, 30)
+                        } else {
+                            LazyVGrid(columns: columns, spacing: 15) {
+                                ForEach(listingsVM.favoriteListings) { listing in
+                                    NavigationLink(destination: ListingDetailView(listing: listing)) {
+                                        ListingGridTile(listing: listing)
                                     }
                                 }
                             }
@@ -182,6 +210,10 @@ struct ProfileView: View {
                     }
                 }
                 .padding(.bottom, 30)
+            }
+            .refreshable {
+                await listingsVM.fetchListings()
+                await authViewModel.fetchProfileData()
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
@@ -259,7 +291,14 @@ struct ProfileView: View {
                 .presentationDetents([.large])
             }
             .onAppear {
-                Task { await authViewModel.fetchProfileData() }
+                Task {
+                    await authViewModel.fetchProfileData()
+                    // Covers landing here before the Marketplace tab has ever
+                    // loaded; otherwise the feed's fetch already filled these in.
+                    if listingsVM.listings.isEmpty {
+                        await listingsVM.fetchListings()
+                    }
+                }
             }
             .alert("Delete Account?", isPresented: $showingDeleteAlert) {
                 Button("Delete", role: .destructive) {

@@ -8,16 +8,10 @@ struct MarketplaceFeedView: View {
     @State private var searchText = ""
     @State private var listingToEdit: Listing? = nil
     
-    // NEW: Computed property to handle the search logic dynamically
+    // Applies the filter/sort bar, then the shared search predicate from
+    // Listing.matches(searchQuery:) — the same one the Search tab uses.
     var searchResults: [Listing] {
-        if searchText.isEmpty {
-            return listingsVM.filteredAndSortedListings
-        } else {
-            return listingsVM.filteredAndSortedListings.filter { listing in
-                listing.title.localizedCaseInsensitiveContains(searchText) ||
-                listing.description.localizedCaseInsensitiveContains(searchText)
-            }
-        }
+        listingsVM.filteredAndSortedListings.filter { $0.matches(searchQuery: searchText) }
     }
     
     var body: some View {
@@ -146,6 +140,11 @@ struct MarketplaceFeedView: View {
                     .buttonStyle(.plain)
                     .contentShape(Circle())
                     .padding([.top, .leading], 20)
+                } else {
+                    // Save/unsave. Sits opposite the status badges, and takes
+                    // the slot the edit pencil uses on your own listings.
+                    FavoriteButton(listing: listing)
+                        .padding([.top, .leading], 12)
                 }
                 } // end outer ZStack
                 .listRowSeparator(.hidden)
@@ -153,6 +152,9 @@ struct MarketplaceFeedView: View {
             .listStyle(.plain)
             // NEW: Native SwiftUI Search Modifier
             .searchable(text: $searchText, prompt: "Search listings...")
+            .refreshable {
+                await listingsVM.fetchListings()
+            }
             .task {
                 await listingsVM.fetchListings()
             }

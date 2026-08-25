@@ -24,14 +24,11 @@ struct SearchView: View {
 
     let scopes = ["Listings", "People"]
 
+    // Same predicate the Marketplace feed uses, so a query that finds an item
+    // there finds it here too. The feed's category/sort/status pickers are
+    // deliberately not applied — those belong to that tab.
     var filteredListings: [Listing] {
-        if searchText.isEmpty {
-            return listingsVM.listings
-        } else {
-            return listingsVM.listings.filter {
-                $0.title.lowercased().contains(searchText.lowercased())
-            }
-        }
+        listingsVM.listings.filter { $0.matches(searchQuery: searchText) }
     }
 
     var body: some View {
@@ -44,13 +41,27 @@ struct SearchView: View {
 
             List {
                 if searchScope == "Listings" {
-                    ForEach(filteredListings) { listing in
-                        NavigationLink(destination: ListingDetailView(listing: listing)) {
-                            VStack(alignment: .leading) {
-                                Text(listing.title)
-                                    .font(.headline)
-                                Text(listing.price)
-                                    .foregroundColor(.green)
+                    if filteredListings.isEmpty && !searchText.isEmpty {
+                        Text("No listings found")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(filteredListings) { listing in
+                            NavigationLink(destination: ListingDetailView(listing: listing)) {
+                                HStack(spacing: 12) {
+                                    thumbnail(for: listing)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(listing.title)
+                                            .font(.headline)
+                                            .lineLimit(1)
+                                        Text(listing.displayPrice)
+                                            .foregroundColor(.green)
+                                            .font(.subheadline)
+                                        Text(listing.category.displayName)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                             }
                         }
                     }
@@ -81,6 +92,10 @@ struct SearchView: View {
             }
             .searchable(text: $searchText, prompt: searchScope == "Listings" ? "Search listings..." : "Search people...")
             .navigationTitle("Search")
+            .refreshable {
+                await listingsVM.fetchListings()
+                if searchScope == "People" { await searchUsers(query: searchText) }
+            }
             .onChange(of: searchText) { _, newValue in
                 if searchScope == "People" {
                     Task { await searchUsers(query: newValue) }
@@ -91,6 +106,28 @@ struct SearchView: View {
                     Task { await searchUsers(query: searchText) }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func thumbnail(for listing: Listing) -> some View {
+        if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                default:
+                    Color.gray.opacity(0.2)
+                }
+            }
+            .frame(width: 54, height: 54)
+            .clipped()
+            .cornerRadius(8)
+        } else {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.2))
+                .frame(width: 54, height: 54)
+                .overlay(Image(systemName: "photo").foregroundColor(.gray))
         }
     }
 
@@ -109,7 +146,7 @@ struct SearchView: View {
             let rows: [ProfileRow] = try await supabase
                 .from("profiles")
                 .select("id, full_name")
-                .ilike("full_name", value: "%\(query)%")
+                .ilike("full_name", pattern: "%\(query)%")
                 .execute()
                 .value
             userResults = rows.compactMap { row in

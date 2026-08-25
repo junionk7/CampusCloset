@@ -73,9 +73,23 @@ struct Listing: Identifiable, Codable {
         if cleanPrice.lowercased() == "free" { return 0.0 }
         return Double(cleanPrice) ?? 0.0
     }
-    
+
+    // Price as it should read on screen, everywhere.
+    var displayPrice: String {
+        priceAsDouble == 0 ? "Free" : "$\(price)"
+    }
+
     // NEW HELPER: Safely gets the first image from the array
     var displayImageUrl: String? {
         return imageUrls?.first
+    }
+
+    // The one search predicate, shared by the Marketplace feed and the Search
+    // tab so the two can't drift apart. An empty query matches everything.
+    func matches(searchQuery query: String) -> Bool {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        return title.localizedCaseInsensitiveContains(trimmed)
+            || description.localizedCaseInsensitiveContains(trimmed)
     }
 }
