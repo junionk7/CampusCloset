@@ -65,7 +65,9 @@ struct MarketplaceFeedView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ZStack {
                             // Image selection
-                            if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
+                            // Thumbnail, not the full-size photo: this card is
+                            // 180pt tall and there are dozens of them.
+                            if let urlString = listing.displayThumbnailUrl, let url = URL(string: urlString) {
                                 AsyncImage(url: url) { phase in
                                     switch phase {
                                     case .success(let image):
@@ -153,8 +155,10 @@ struct MarketplaceFeedView: View {
             // NEW: Native SwiftUI Search Modifier
             .searchable(text: $searchText, prompt: "Search listings...")
             .refreshable {
-                await listingsVM.fetchListings()
+                await listingsVM.fetchListings(force: true)
             }
+            // The only automatic feed load. MarketplaceView used to fire a
+            // second one from .onAppear, so every visit fetched the table twice.
             .task {
                 await listingsVM.fetchListings()
             }

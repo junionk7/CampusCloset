@@ -22,6 +22,10 @@ struct SearchView: View {
     @State private var userResults: [UserResult] = []
     @State private var isSearchingUsers = false
 
+    /// In-flight people search. Held so each keystroke can cancel the last one
+    /// instead of firing a query per character.
+    @State private var userSearchTask: Task<Void, Never>? = nil
+
     let scopes = ["Listings", "People"]
 
     // Same predicate the Marketplace feed uses, so a query that finds an item
@@ -93,17 +97,17 @@ struct SearchView: View {
             .searchable(text: $searchText, prompt: searchScope == "Listings" ? "Search listings..." : "Search people...")
             .navigationTitle("Search")
             .refreshable {
-                await listingsVM.fetchListings()
+                await listingsVM.fetchListings(force: true)
                 if searchScope == "People" { await searchUsers(query: searchText) }
             }
             .onChange(of: searchText) { _, newValue in
                 if searchScope == "People" {
-                    Task { await searchUsers(query: newValue) }
+                    scheduleUserSearch(query: newValue)
                 }
             }
             .onChange(of: searchScope) { _, _ in
                 if searchScope == "People" {
-                    Task { await searchUsers(query: searchText) }
+                    scheduleUserSearch(query: searchText)
                 }
             }
         }
@@ -111,7 +115,8 @@ struct SearchView: View {
 
     @ViewBuilder
     private func thumbnail(for listing: Listing) -> some View {
-        if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
+        // 54pt row image — the thumbnail, never the full-size photo.
+        if let urlString = listing.displayThumbnailUrl, let url = URL(string: urlString) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -128,6 +133,17 @@ struct SearchView: View {
                 .fill(Color.gray.opacity(0.2))
                 .frame(width: 54, height: 54)
                 .overlay(Image(systemName: "photo").foregroundColor(.gray))
+        }
+    }
+
+    /// Waits out a short pause in typing before querying, so "jun kuang" costs
+    /// one request instead of nine.
+    private func scheduleUserSearch(query: String) {
+        userSearchTask?.cancel()
+        userSearchTask = Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            await searchUsers(query: query)
         }
     }
 

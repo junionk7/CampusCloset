@@ -46,7 +46,9 @@ struct ListingGridTile: View {
 
     @ViewBuilder
     private var thumbnail: some View {
-        if let urlString = listing.displayImageUrl, let url = URL(string: urlString) {
+        // 120pt tile — the thumbnail is the right size for it, and the full-size
+        // photo is not.
+        if let urlString = listing.displayThumbnailUrl, let url = URL(string: urlString) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):

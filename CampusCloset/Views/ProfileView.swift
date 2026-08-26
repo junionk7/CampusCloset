@@ -212,7 +212,7 @@ struct ProfileView: View {
                 .padding(.bottom, 30)
             }
             .refreshable {
-                await listingsVM.fetchListings()
+                await listingsVM.fetchListings(force: true)
                 await authViewModel.fetchProfileData()
             }
             .navigationTitle("Profile")

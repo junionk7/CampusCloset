@@ -116,7 +116,7 @@ struct PublicProfileView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
-            await listingsVM.fetchListings()
+            await listingsVM.fetchListings(force: true)
             await loadProfile()
         }
         .task {

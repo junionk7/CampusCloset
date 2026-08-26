@@ -26,6 +26,9 @@ struct ListingDetailView: View {
     @State private var showSentOverlay = false
     @State private var showingEditSheet = false
 
+    /// Which photo of the carousel is on screen. Drives the lazy loading below.
+    @State private var visiblePhotoIndex = 0
+
 
     var body: some View {
         ScrollView {
@@ -36,22 +39,33 @@ struct ListingDetailView: View {
                 let allImageLinks = listing.imageUrls ?? []
                 
                 if !allImageLinks.isEmpty {
-                    TabView {
-                        ForEach(allImageLinks, id: \.self) { urlString in
-                            if let url = URL(string: urlString) {
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case .success(let image):
-                                        image.resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300)
-                                            .background(Color.black.opacity(0.05))
-                                    case .failure:
-                                        Image(systemName: "photo").font(.largeTitle).frame(maxWidth: .infinity, maxHeight: 300).background(Color.gray.opacity(0.1))
-                                    case .empty:
-                                        ProgressView().frame(maxWidth: .infinity, maxHeight: 300)
-                                    @unknown default: EmptyView()
+                    // A paged TabView builds every page up front, so opening a
+                    // six-photo listing used to download all six full-size
+                    // images whether or not anyone swiped. Only the visible page
+                    // and its immediate neighbours load now; the rest stay
+                    // placeholders until they are swiped to.
+                    TabView(selection: $visiblePhotoIndex) {
+                        ForEach(Array(allImageLinks.enumerated()), id: \.offset) { index, urlString in
+                            Group {
+                                if abs(index - visiblePhotoIndex) <= 1, let url = URL(string: urlString) {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .success(let image):
+                                            image.resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300)
+                                                .background(Color.black.opacity(0.05))
+                                        case .failure:
+                                            Image(systemName: "photo").font(.largeTitle).frame(maxWidth: .infinity, maxHeight: 300).background(Color.gray.opacity(0.1))
+                                        case .empty:
+                                            ProgressView().frame(maxWidth: .infinity, maxHeight: 300)
+                                        @unknown default: EmptyView()
+                                        }
                                     }
+                                } else {
+                                    Rectangle().fill(Color.gray.opacity(0.1))
+                                        .frame(maxWidth: .infinity, maxHeight: 300)
                                 }
                             }
+                            .tag(index)
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: allImageLinks.count > 1 ? .always : .never)) // Only show dots if >1 photo

@@ -14,7 +14,12 @@ struct Listing: Identifiable, Codable {
     
     // Array for multiple images
     var imageUrls: [String]?
-    
+
+    // Small (~400px) versions of imageUrls, same order, one per photo. Every
+    // browsing surface reads these instead of the full-size originals — see
+    // displayThumbnailUrl. Null on listings posted before thumbnails existed.
+    var thumbnailUrls: [String]?
+
     var createdAt: Date? = nil
     var userId: UUID
     var status: ListingStatus = .available
@@ -52,6 +57,7 @@ struct Listing: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, title, price, description
         case imageUrls = "image_urls" // NEW Mapping
+        case thumbnailUrls = "thumbnail_urls"
         case createdAt = "created_at"
         case userId = "user_id"
         case status
@@ -82,6 +88,24 @@ struct Listing: Identifiable, Codable {
     // NEW HELPER: Safely gets the first image from the array
     var displayImageUrl: String? {
         return imageUrls?.first
+    }
+
+    /// What every browsing surface — the feed, search rows, profile grids —
+    /// should load. Falls back to the full-size photo for listings posted before
+    /// thumbnails existed, or if a thumbnail failed to upload, so a missing
+    /// thumbnail costs bandwidth rather than showing an empty tile.
+    var displayThumbnailUrl: String? {
+        return thumbnailUrls?.first ?? imageUrls?.first
+    }
+
+    /// The thumbnail matching `imageUrls[index]`, falling back to the original.
+    /// Used by the edit screen's photo strip.
+    func thumbnailUrl(at index: Int) -> String? {
+        if let thumbnails = thumbnailUrls, thumbnails.indices.contains(index) {
+            return thumbnails[index]
+        }
+        guard let images = imageUrls, images.indices.contains(index) else { return nil }
+        return images[index]
     }
 
     // The one search predicate, shared by the Marketplace feed and the Search

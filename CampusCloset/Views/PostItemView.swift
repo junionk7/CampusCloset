@@ -104,15 +104,17 @@ struct PostItemView: View {
         isPosting = true
         
         Task {
-            // Upload all images and get the array of links back
-            let links = await listingsVM.uploadImages(images: selectedImages)
-            
+            // Upload all images and get the array of links back — one full-size
+            // image and one thumbnail per photo.
+            let uploaded = await listingsVM.uploadImages(images: selectedImages)
+
             await listingsVM.addListing(
                 title: title,
                 price: isFree ? "Free" : price,
                 description: description,
                 userId: userId,
-                imageUrls: links, // Pass array
+                imageUrls: uploaded.imageUrls, // Pass array
+                thumbnailUrls: uploaded.thumbnailUrls,
                 category: selectedCategory
             )
             

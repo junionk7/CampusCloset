@@ -30,11 +30,8 @@ struct MarketplaceView: View {
                         }
                     }
                 }
-                .onAppear {
-                    Task {
-                        await listingsVM.fetchListings()
-                    }
-                }
+                // No fetch here — MarketplaceFeedView's .task owns loading the
+                // feed. Having both meant two full-table reads per visit.
         }
     }
 }

@@ -16,7 +16,17 @@ struct EditListingView: View {
     @State private var isFree: Bool
     @State private var description: String
     @State private var selectedCategory: Listing.ListingCategory
-    @State private var existingImageUrls: [String]
+
+    /// A photo already on the listing. The full-size URL and its thumbnail travel
+    /// together so removing one from the strip can never leave the two arrays
+    /// misaligned on save.
+    private struct ExistingPhoto: Identifiable, Equatable {
+        let imageUrl: String
+        let thumbnailUrl: String
+        var id: String { imageUrl }
+    }
+
+    @State private var existingPhotos: [ExistingPhoto]
 
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var newImages: [UIImage] = []
@@ -30,7 +40,16 @@ struct EditListingView: View {
         _price = State(initialValue: free ? "" : listing.price)
         _description = State(initialValue: listing.description)
         _selectedCategory = State(initialValue: listing.category)
-        _existingImageUrls = State(initialValue: listing.imageUrls ?? [])
+
+        let images = listing.imageUrls ?? []
+        _existingPhotos = State(initialValue: images.enumerated().map { index, imageUrl in
+            ExistingPhoto(
+                imageUrl: imageUrl,
+                // Falls back to the full-size URL on listings posted before
+                // thumbnails existed.
+                thumbnailUrl: listing.thumbnailUrl(at: index) ?? imageUrl
+            )
+        })
     }
 
     var body: some View {
@@ -59,14 +78,15 @@ struct EditListingView: View {
                 }
 
                 Section(header: Text("Current Photos")) {
-                    if existingImageUrls.isEmpty {
+                    if existingPhotos.isEmpty {
                         Text("No photos").foregroundColor(.secondary)
                     } else {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 10) {
-                                ForEach(existingImageUrls, id: \.self) { urlString in
+                                ForEach(existingPhotos) { photo in
                                     ZStack(alignment: .topTrailing) {
-                                        if let url = URL(string: urlString) {
+                                        // 100pt strip — thumbnail is plenty.
+                                        if let url = URL(string: photo.thumbnailUrl) {
                                             AsyncImage(url: url) { phase in
                                                 switch phase {
                                                 case .success(let image):
@@ -79,7 +99,7 @@ struct EditListingView: View {
                                             }
                                         }
                                         Button {
-                                            existingImageUrls.removeAll { $0 == urlString }
+                                            existingPhotos.removeAll { $0.imageUrl == photo.imageUrl }
                                         } label: {
                                             Image(systemName: "xmark.circle.fill")
                                                 .foregroundColor(.red)
@@ -95,7 +115,7 @@ struct EditListingView: View {
                 }
 
                 Section(header: Text("Add More Photos")) {
-                    PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, 6 - existingImageUrls.count), matching: .images) {
+                    PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, 6 - existingPhotos.count), matching: .images) {
                         Label("Select Photos", systemImage: "photo.on.rectangle")
                     }
                     if !newImages.isEmpty {
@@ -149,15 +169,15 @@ struct EditListingView: View {
     private func saveChanges() {
         isSaving = true
         Task {
-            let uploadedUrls = await listingsVM.uploadImages(images: newImages)
-            let finalUrls = existingImageUrls + uploadedUrls
+            let uploaded = await listingsVM.uploadImages(images: newImages)
             await listingsVM.updateListing(
                 listing: listing,
                 title: title,
                 price: isFree ? "Free" : price,
                 description: description,
                 category: selectedCategory,
-                imageUrls: finalUrls
+                imageUrls: existingPhotos.map(\.imageUrl) + uploaded.imageUrls,
+                thumbnailUrls: existingPhotos.map(\.thumbnailUrl) + uploaded.thumbnailUrls
             )
             isSaving = false
             dismiss()
