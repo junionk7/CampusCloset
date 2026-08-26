@@ -1,1 +1,5 @@
 .claude/
+
+# Python bytecode, generated whenever scripts/ is run
+__pycache__/
+*.pyc
